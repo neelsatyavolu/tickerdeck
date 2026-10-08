@@ -9,23 +9,32 @@ import { ForecastPanel } from "@/components/ForecastPanel";
 import { HoldingForm } from "@/components/HoldingForm";
 import { useLivePrices } from "@/components/LivePrices";
 import { usePortfolios } from "@/components/Portfolios";
+import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
 import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
 import { api } from "@/lib/client/api";
-import { timeAgo, usd } from "@/lib/format";
-import type { AnalystTargets, NewsItem, Profile, QuoteSnapshot, Recommendation } from "@/lib/market/types";
-import { HISTORY_RANGES, type HistoryRange } from "@/lib/market/types";
 import { addHolding } from "@/lib/client/portfolios";
+import { timeAgo, usd } from "@/lib/format";
+import { yahooUrl } from "@/lib/links";
+import { lastDays, periodReturns } from "@/lib/market/performance";
+import type { AnalystTargets, EarningsPoint, KeyStats, NewsItem, Profile, QuoteSnapshot, Recommendation, TargetPoint } from "@/lib/market/types";
 
 type Panel<T> = { value: T | null; error: string | null };
 type StockInfo = {
   symbol: string;
   quote: Panel<QuoteSnapshot>;
   profile: Panel<Profile>;
-  targets: Panel<AnalystTargets>;
+  stats: Panel<KeyStats>;
+  targets: Panel<{ targets: AnalystTargets; history: TargetPoint[] }>;
   recommendations: Panel<Recommendation[]>;
   news: Panel<NewsItem[]>;
+  earnings: Panel<EarningsPoint[]>;
+  peers: Panel<string[]>;
 };
+
+const RANGES = { "1M": 31, "3M": 92, "6M": 183, "1Y": 366, "2Y": 731, "5Y": 1827 } as const;
+type Range = keyof typeof RANGES;
+const RANGE_KEYS = Object.keys(RANGES) as Range[];
 
 export default function StockPage() {
   const params = useParams<{ symbol: string }>();
@@ -33,10 +42,10 @@ export default function StockPage() {
   const [loaded, setLoaded] = useState<{ symbol: string; info: StockInfo | null; error: string | null } | null>(null);
   const info = loaded?.symbol === symbol ? loaded.info : null;
   const error = loaded?.symbol === symbol ? loaded.error : null;
-  const [range, setRange] = useState<HistoryRange>("1y");
+  const [range, setRange] = useState<Range>("1Y");
   const { prices, lastTrade } = useLivePrices([symbol]);
-  const { data: hist, failed } = useHistories([symbol], range);
-  const { data: yearHist } = useHistories([symbol], "1y");
+  // One 5-year fetch feeds every range, the performance strip and the forecast.
+  const { data: hist, failed, loading: histLoading } = useHistories([symbol], "5y");
   const { ask } = useAssistant();
 
   useEffect(() => {
@@ -53,19 +62,32 @@ export default function StockPage() {
   const price = live?.price ?? info?.quote.value?.price ?? null;
   const prevClose = live?.prevClose ?? info?.quote.value?.prevClose ?? null;
   const change = price !== null && prevClose ? price - prevClose : null;
-  const points = useMemo(() => (hist[symbol] ?? []).map((p) => ({ t: p.t, v: p.close })), [hist, symbol]);
-  const yearPoints = useMemo(() => (yearHist[symbol] ?? []).map((p) => ({ t: p.t, v: p.close })), [yearHist, symbol]);
+  const all = useMemo(() => hist[symbol] ?? [], [hist, symbol]);
+  const points = useMemo(() => lastDays(all, RANGES[range]).map((p) => ({ t: p.t, v: p.close, volume: p.volume })), [all, range]);
+  const yearPoints = useMemo(() => lastDays(all, 366).map((p) => ({ t: p.t, v: p.close })), [all]);
+  const returns = useMemo(() => periodReturns(all, price), [all, price]);
+  const targetHistory = useMemo(() => (info?.targets.value?.history ?? []).map((p) => ({ t: p.t, v: p.target })), [info]);
+  const stats = info?.stats.value;
+  const name = stats?.name ?? info?.profile.value?.name ?? null;
+  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : null].filter(Boolean).join(" · ");
   const rec = info?.recommendations.value?.[0];
 
-  if (error) return <ErrorText error={error} />;
+  if (error) {
+    return (
+      <div className="stack">
+        <ErrorText error={error} />
+        <a className="btn btn-ghost" style={{ alignSelf: "flex-start" }} href={yahooUrl(symbol)} target="_blank" rel="noopener noreferrer">Look up {symbol} on Yahoo Finance ↗</a>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="label">{info?.profile.value ? [info.profile.value.exchange, info.profile.value.industry].filter(Boolean).join(" · ") : "stock"}</div>
+      <div className="label">{meta || "stock"}</div>
       <div className="spread" style={{ marginTop: 8 }}>
         <div>
           <h1 className="display">{symbol}</h1>
-          <div className="serif muted" style={{ fontSize: 19, marginTop: 4 }}>{info?.profile.value?.name ?? " "}</div>
+          <div className="serif muted" style={{ fontSize: 19, marginTop: 4 }}>{name ?? " "}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="hero-value" style={{ fontSize: 40 }}>{usd(price)}</div>
@@ -78,15 +100,31 @@ export default function StockPage() {
 
       <div className="row" style={{ marginTop: 16 }}>
         <button className="btn btn-ghost" onClick={() => ask(`What should I know about $${symbol} right now?`, { symbol })}>Ask about {symbol}</button>
+        <a className="btn btn-ghost" href={yahooUrl(symbol)} target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>
         <AddToPortfolio symbol={symbol} />
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <PerformanceStrip rows={returns} />
       </div>
 
       <section className="section">
         <div className="spread">
           <h2 className="display">Price</h2>
-          <Seg label="History range" value={range} options={HISTORY_RANGES} onChange={setRange} />
+          <Seg label="History range" value={range} options={RANGE_KEYS} onChange={setRange} />
         </div>
-        {failed.length ? <div className="notice">No price history available.</div> : <LineChart points={points} label={`${symbol} price`} height={280} />}
+        {failed.length ? (
+          <div className="notice">No price history available for {symbol}.</div>
+        ) : histLoading && all.length === 0 ? (
+          <div className="notice">Loading history<span className="caret" aria-hidden="true" /></div>
+        ) : (
+          <LineChart points={points} label={`${symbol} price`} height={320} showVolume overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
+        )}
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">Key statistics</h2></div>
+        {!info ? <div className="notice">Loading</div> : stats ? <KeyStatsGrid stats={stats} price={price} /> : <div className="notice">{info.stats.error ?? "No statistics for this symbol."}</div>}
       </section>
 
       <section className="section">
@@ -104,13 +142,18 @@ export default function StockPage() {
         <div className="grid-cells cols-2">
           <div>
             <div className="label" style={{ marginBottom: 8 }}>Price targets</div>
-            {!info ? <div className="notice">Loading</div> : info.targets.value ? <TargetRange targets={info.targets.value} price={price} /> : <div className="notice">{info.targets.error ?? "No analyst targets for this symbol."}</div>}
+            {!info ? <div className="notice">Loading</div> : info.targets.value ? <TargetRange targets={info.targets.value.targets} price={price} /> : <div className="notice">{info.targets.error ?? "No analyst targets for this symbol."}</div>}
           </div>
           <div>
             <div className="label" style={{ marginBottom: 8 }}>Ratings</div>
             {!info ? <div className="notice">Loading</div> : rec ? <Ratings rec={rec} /> : <div className="notice">{info.recommendations.error ?? "No ratings for this symbol."}</div>}
           </div>
         </div>
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">Earnings</h2></div>
+        {!info ? <div className="notice">Loading</div> : <EarningsChart rows={info.earnings.value ?? []} />}
       </section>
 
       <section className="section">
@@ -129,6 +172,16 @@ export default function StockPage() {
         ) : (
           <div className="notice">{info.news.error ?? "No company news in the last 10 days."}</div>
         )}
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">Peers</h2></div>
+        {!info ? <div className="notice">Loading</div> : <Peers symbols={info.peers.value ?? []} />}
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">More on Yahoo Finance</h2></div>
+        <YahooLinks symbol={symbol} />
       </section>
     </div>
   );

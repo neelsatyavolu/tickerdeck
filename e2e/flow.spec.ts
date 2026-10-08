@@ -48,9 +48,21 @@ test("sign up, create a portfolio, add a holding, see a live price and forecast"
   await page.getByRole("link", { name: "AAPL" }).click();
   await expect(page.getByRole("heading", { name: "AAPL" })).toBeVisible();
   await expect(page.getByText("Price targets")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Key statistics" })).toBeVisible();
+  await expect(page.getByText("P/E (TTM)")).toBeVisible();
+  await expect(page.getByRole("img", { name: /AAPL price/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Yahoo Finance/ }).first()).toHaveAttribute("href", "https://finance.yahoo.com/quote/AAPL/");
+
+  // ETFs and share classes work too.
+  for (const sym of ["SPY", "BRK.B"]) {
+    await page.goto(`/s/${sym}`);
+    await expect(page.getByRole("heading", { name: sym, exact: true })).toBeVisible();
+    await expect(page.getByRole("img", { name: new RegExp(`${sym.replace(".", "\\.")} price`) })).toBeVisible();
+  }
+  await page.goto("/");
+  await page.getByRole("link", { name: /E2E Core/ }).click();
 
   // Clean up through the app itself.
-  await page.goBack();
   await expect(page.getByRole("heading", { name: "E2E Core" })).toBeVisible();
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Delete", exact: true }).first().click();

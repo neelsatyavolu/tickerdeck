@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { pct, shares, signedUsd, tone, usd } from "@/lib/format";
+import { yahooUrl } from "@/lib/links";
 import type { Position } from "@/lib/portfolio/math";
 import type { Holding, Portfolio } from "@/lib/portfolio/types";
 import { deleteHolding, updateHolding } from "@/lib/client/portfolios";
@@ -62,6 +63,7 @@ export function HoldingsTable({ portfolio, positions }: Props) {
                         {open ? "−" : "+"}
                       </button>
                       <Link href={`/s/${encodeURIComponent(p.symbol)}`} style={{ fontWeight: 500 }}>{p.symbol}</Link>
+                      <a href={yahooUrl(p.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${p.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     </td>
                     {!isWatch && <td>{shares(p.shares)}</td>}
                     {!isWatch && <td>{usd(p.avgCost)}</td>}

@@ -1,7 +1,7 @@
 import "server-only";
 import { forecastExposures } from "../forecast/service";
 import { news, profile, quote, quotes, recommendations } from "../market/finnhub";
-import { analystTargets } from "../market/yahoo";
+import { analystTargets } from "../market/sources";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "../portfolio/math";
 import { listPortfolios } from "../portfolio/repo";
 import type { Quote } from "../portfolio/types";
@@ -18,7 +18,7 @@ async function symbolContext(symbol: string): Promise<SymbolContext | null> {
   if (!q) return null; // not a real ticker (e.g. an acronym we didn't filter)
   const [p, targets, recs, headlines, forecast] = await Promise.all([
     orNull(profile(symbol)),
-    orNull(analystTargets(symbol)),
+    orNull(analystTargets(symbol).then((r) => r?.targets ?? null)),
     orNull(recommendations(symbol)),
     orNull(news(symbol, 7)),
     orNull(forecastExposures([{ symbol, value: q.price }], FOCUS_HORIZON)),

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fail, ok, withUser } from "@/lib/api";
-import { history } from "@/lib/market/yahoo";
+import { history } from "@/lib/market/sources";
 import { HISTORY_RANGES } from "@/lib/market/types";
 import { firstIssue, symbolSchema } from "@/lib/validation";
 

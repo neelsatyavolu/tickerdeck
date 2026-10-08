@@ -1,6 +1,6 @@
 import "server-only";
 import { UserFacingError } from "../errors";
-import { history } from "../market/yahoo";
+import { history } from "../market/sources";
 import { alignCloses } from "./align";
 import { HORIZONS, returnMatrix, simulate, type Forecast, type Horizon } from "./montecarlo";
 

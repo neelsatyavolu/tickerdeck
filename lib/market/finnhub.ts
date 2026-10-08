@@ -1,7 +1,7 @@
 import "server-only";
 import { memo } from "./cache";
 import { fetchJson, UpstreamError } from "./http";
-import type { NewsItem, Profile, QuoteSnapshot, Recommendation, SymbolMatch } from "./types";
+import type { EarningsPoint, NewsItem, Profile, QuoteSnapshot, Recommendation, SymbolMatch } from "./types";
 
 const BASE = "https://finnhub.io/api/v1";
 const QUOTE_TTL = 15_000;
@@ -101,5 +101,31 @@ export function search(query: string): Promise<SymbolMatch[]> {
       .filter((m) => /^[A-Z][A-Z0-9.-]{0,9}$/.test(m.symbol))
       .slice(0, 8)
       .map((m) => ({ symbol: m.symbol, name: m.description, type: m.type }));
+  });
+}
+
+/** Finnhub's "basic financials": ratios, margins, growth and returns (percent values are in percent). */
+export function metrics(symbol: string): Promise<Record<string, number | string | null>> {
+  return memo(`fh:metric:${symbol}`, SLOW_TTL, async () => {
+    const r = await get<{ metric?: Record<string, number | string | null> }>("stock/metric", { symbol, metric: "all" });
+    return r.metric ?? {};
+  });
+}
+
+type RawEarnings = { period: string; actual: number | null; estimate: number | null; surprisePercent: number | null };
+
+export function earnings(symbol: string): Promise<EarningsPoint[]> {
+  return memo(`fh:earnings:${symbol}`, SLOW_TTL, async () => {
+    const rows = await get<RawEarnings[]>("stock/earnings", { symbol });
+    return (Array.isArray(rows) ? rows : [])
+      .map((e) => ({ period: e.period, actual: e.actual, estimate: e.estimate, surprisePercent: e.surprisePercent }))
+      .sort((a, b) => a.period.localeCompare(b.period));
+  });
+}
+
+export function peers(symbol: string): Promise<string[]> {
+  return memo(`fh:peers:${symbol}`, SLOW_TTL, async () => {
+    const rows = await get<string[]>("stock/peers", { symbol });
+    return (Array.isArray(rows) ? rows : []).filter((p) => p !== symbol && /^[A-Z][A-Z0-9.-]{0,9}$/.test(p)).slice(0, 10);
   });
 }
