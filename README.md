@@ -12,8 +12,10 @@ Personal stock and portfolio tracker. It covers:
 - **App:** Next.js 16 (App Router), deployed on Vercel.
 - **Database and sign-in:** Neon Postgres plus Neon Auth (Vercel Marketplace). All reads and writes go through server routes, and every query is scoped to the signed-in user.
 - **Market data:**
-  - Finnhub: quotes, the trade stream, profiles, ratings, news, and symbol search.
-  - Yahoo Finance: daily price history and analyst price targets. These endpoints are unofficial and all Yahoo code lives in `lib/market/yahoo.ts`.
+  - Finnhub: quotes, the trade stream, profiles, key metrics, ratings, earnings, peers, news, and symbol search.
+  - Nasdaq (`lib/market/nasdaq.ts`): daily price history and volume (stocks and ETFs), analyst targets and their history, and sector/dividend summary.
+  - Yahoo Finance (`lib/market/yahoo.ts`): fallback for history and targets only. It rate-limits cloud hosts (429 from Vercel), so Nasdaq is tried first (`lib/market/sources.ts`). Nasdaq's and Yahoo's endpoints are both unofficial.
+  - Every stock page links out to the matching Yahoo Finance pages.
 - **Design:** Machine & Ink (`~/DESIGN.md`).
 
 ## Setup
