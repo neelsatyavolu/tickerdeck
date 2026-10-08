@@ -8,6 +8,7 @@ import { LineChart } from "@/components/charts/LineChart";
 import { ForecastPanel } from "@/components/ForecastPanel";
 import { HoldingForm } from "@/components/HoldingForm";
 import { HoldingsTable } from "@/components/HoldingsTable";
+import { ImportCsv } from "@/components/ImportCsv";
 import { useLivePrices } from "@/components/LivePrices";
 import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
@@ -32,6 +33,7 @@ export default function PortfolioPage() {
   const [range, setRange] = useState<(typeof RANGES)[number]>("1y");
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const positions = useMemo(() => (portfolio ? aggregatePositions(portfolio.holdings, prices) : []), [portfolio, prices]);
@@ -109,8 +111,18 @@ export default function PortfolioPage() {
       <section className="section">
         <div className="spread">
           <h2 className="display">Holdings</h2>
-          {!adding && <button className="btn btn-primary" onClick={() => setAdding(true)}>Add {isWatch ? "symbol" : "holding"}</button>}
+          {!adding && !importing && (
+            <div className="row">
+              <button className="btn btn-ghost" onClick={() => setImporting(true)}>Import CSV</button>
+              <button className="btn btn-primary" onClick={() => setAdding(true)}>Add {isWatch ? "symbol" : "holding"}</button>
+            </div>
+          )}
         </div>
+        {importing && (
+          <div style={{ marginBottom: 16 }}>
+            <ImportCsv portfolioId={portfolio.id} onCancel={() => setImporting(false)} onDone={() => setImporting(false)} />
+          </div>
+        )}
         {adding && (
           <div className="card" style={{ marginBottom: 16 }}>
             <HoldingForm
@@ -124,7 +136,7 @@ export default function PortfolioPage() {
           </div>
         )}
         {positions.length === 0 ? (
-          !adding && <div className="empty"><p>No holdings yet. Add a symbol to start tracking it live.</p></div>
+          !adding && !importing && <div className="empty"><p>No holdings yet. Add a symbol to start tracking it live.</p></div>
         ) : (
           <HoldingsTable portfolio={portfolio} positions={positions} />
         )}

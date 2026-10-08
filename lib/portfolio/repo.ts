@@ -94,3 +94,46 @@ export async function deleteHolding(userId: string, id: string): Promise<void> {
   const rows = await sql()`delete from holdings where id = ${id} and user_id = ${userId} returning id`;
   if (rows.length === 0) throw new UserFacingError("Holding not found.", 404);
 }
+
+/**
+ * Bulk import in one statement (all or nothing): into an existing portfolio
+ * of this user's, or into a new portfolio created in the same statement.
+ * Returns the portfolio id.
+ */
+export async function importHoldings(
+  userId: string,
+  target: { portfolioId: string } | { portfolio: z.input<typeof portfolioInputSchema> },
+  inputs: z.input<typeof holdingInputSchema>[],
+): Promise<string> {
+  const rows = inputs.map((h) => holdingInputSchema.parse(h)).map((h) => ({ ...h, bought_at: h.bought_at ?? null, note: h.note ?? null }));
+  if (rows.length === 0) throw new UserFacingError("Nothing to import.");
+  const json = JSON.stringify(rows);
+  const recordset = "x(symbol text, shares numeric, cost_basis numeric, bought_at date, note text)";
+
+  if ("portfolioId" in target) {
+    const result = await sql().query(
+      `insert into holdings (portfolio_id, user_id, symbol, shares, cost_basis, bought_at, note)
+       select p.id, $1, x.symbol, x.shares, x.cost_basis, x.bought_at, x.note
+       from portfolios p, jsonb_to_recordset($3::jsonb) as ${recordset}
+       where p.id = $2 and p.user_id = $1
+       returning portfolio_id`,
+      [userId, target.portfolioId, json],
+    );
+    if (result.length === 0) throw new UserFacingError("Portfolio not found.", 404);
+    return target.portfolioId;
+  }
+
+  const v = portfolioInputSchema.parse(target.portfolio);
+  const result = await sql().query(
+    `with p as (
+       insert into portfolios (user_id, name, kind, starting_cash, start_date)
+       values ($1, $2, $3, $4, $5) returning id
+     )
+     insert into holdings (portfolio_id, user_id, symbol, shares, cost_basis, bought_at, note)
+     select p.id, $1, x.symbol, x.shares, x.cost_basis, x.bought_at, x.note
+     from p, jsonb_to_recordset($6::jsonb) as ${recordset}
+     returning portfolio_id`,
+    [userId, v.name, v.kind, v.starting_cash, v.start_date, json],
+  );
+  return result[0].portfolio_id as string;
+}

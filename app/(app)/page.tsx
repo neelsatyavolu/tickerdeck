@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useLivePrices } from "@/components/LivePrices";
+import { ImportCsv } from "@/components/ImportCsv";
 import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
 import { Change, ErrorText, Tile } from "@/components/ui";
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const { portfolios, loading, error, mutate } = usePortfolios();
   const { prices } = useLivePrices(uniqueSymbols(portfolios));
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const router = useRouter();
 
   const rows = useMemo(
@@ -54,15 +56,28 @@ export default function Dashboard() {
       <section className="section">
         <div className="spread">
           <h2 className="display">Portfolios</h2>
-          {!creating && portfolios.length > 0 && <button className="btn btn-primary" onClick={() => setCreating(true)}>New portfolio</button>}
+          {!creating && !importing && (
+            <div className="row">
+              <button className="btn btn-ghost" onClick={() => setImporting(true)}>Import CSV</button>
+              {portfolios.length > 0 && <button className="btn btn-primary" onClick={() => setCreating(true)}>New portfolio</button>}
+            </div>
+          )}
         </div>
         <ErrorText error={error} />
-        {creating || portfolios.length === 0 ? (
+        {importing && (
+          <div style={{ marginBottom: 24 }}>
+            <ImportCsv onCancel={() => setImporting(false)} onDone={(id) => { setImporting(false); router.push(`/p/${id}`); }} />
+          </div>
+        )}
+        {(creating || portfolios.length === 0) && !importing ? (
           <div className="stack">
             {portfolios.length === 0 && !creating && (
               <div className="empty">
-                <p>Start with a portfolio. Track what you own, follow a watchlist, or test a what-if basket with paper money.</p>
-                <button className="btn btn-primary" onClick={() => setCreating(true)}>New portfolio</button>
+                <p>Start with a portfolio. Track what you own, follow a watchlist, or test a what-if basket with paper money. Or bring your portfolios over from Yahoo Finance with Import CSV.</p>
+                <div className="row">
+                  <button className="btn btn-primary" onClick={() => setCreating(true)}>New portfolio</button>
+                  <button className="btn btn-ghost" onClick={() => setImporting(true)}>Import CSV</button>
+                </div>
               </div>
             )}
             {creating && (

@@ -17,3 +17,5 @@ export const deletePortfolio = (id: string) => send<null>(`/api/portfolios/${id}
 export const addHolding = (portfolioId: string, v: HoldingInput) => send<null>(`/api/portfolios/${portfolioId}/holdings`, "POST", v);
 export const updateHolding = (id: string, v: HoldingInput) => send<null>(`/api/holdings/${id}`, "PATCH", v);
 export const deleteHolding = (id: string) => send<null>(`/api/holdings/${id}`, "DELETE");
+export const importHoldings = (target: { portfolioId: string } | { portfolio: PortfolioInput }, holdings: HoldingInput[]) =>
+  send<{ id: string; imported: number }>("/api/portfolios/import", "POST", { ...target, holdings });
