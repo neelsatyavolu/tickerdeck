@@ -2,17 +2,19 @@ import { neon } from "@neondatabase/serverless";
 import { expect, test } from "@playwright/test";
 
 // Creates a throwaway account through the sign-up form, walks the main flow,
-// then deletes the account's data. Needs DATABASE_URL, NEON_AUTH_BASE_URL,
-// NEON_AUTH_COOKIE_SECRET and FINNHUB_API_KEY in the environment.
+// and deletes the portfolio it made. Runs against a local dev server (needs
+// the Neon + Finnhub env) or a deployment via E2E_BASE_URL. With DATABASE_URL
+// set it also removes the throwaway account.
 
 const dbUrl = process.env.DATABASE_URL;
-test.skip(!dbUrl || !process.env.NEON_AUTH_BASE_URL, "Neon env not set");
+test.skip(!process.env.E2E_BASE_URL && !process.env.NEON_AUTH_BASE_URL, "Set E2E_BASE_URL or the Neon env");
 
 const email = `e2e+${Date.now()}@tickerdeck.test`;
 const password = `e2e-${Math.random().toString(36).slice(2)}-pass`;
 
 test.afterAll(async () => {
-  const sql = neon(dbUrl!);
+  if (!dbUrl) return;
+  const sql = neon(dbUrl);
   await sql`delete from portfolios where name = 'E2E Core' and user_id in (select id::text from neon_auth."user" where email = ${email})`;
   await sql`delete from neon_auth."user" where email = ${email}`.catch(() => {});
 });
@@ -46,4 +48,11 @@ test("sign up, create a portfolio, add a holding, see a live price and forecast"
   await page.getByRole("link", { name: "AAPL" }).click();
   await expect(page.getByRole("heading", { name: "AAPL" })).toBeVisible();
   await expect(page.getByText("Price targets")).toBeVisible();
+
+  // Clean up through the app itself.
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "E2E Core" })).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Delete", exact: true }).first().click();
+  await expect(page.getByText("All portfolios")).toBeVisible();
 });
