@@ -60,6 +60,13 @@ describe("portfolioTotals", () => {
     expect(t.totalGainPct).toBeCloseTo(0.05);
   });
 
+  it("doesn't treat an unpriced paper position as a loss", () => {
+    const positions = aggregatePositions([lot("A", 10, 500), lot("B", 10, 500)], { A: { price: 500, prevClose: 500 } });
+    const t = portfolioTotals({ kind: "paper", starting_cash: 10_000 }, positions);
+    expect(t.totalGain).toBe(0);
+    expect(t.missing).toEqual(["B"]);
+  });
+
   it("handles an empty portfolio", () => {
     const t = portfolioTotals({ kind: "holdings", starting_cash: null }, []);
     expect(t).toMatchObject({ marketValue: 0, totalGain: 0, dayChangePct: null, totalGainPct: null });

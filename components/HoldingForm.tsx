@@ -28,6 +28,8 @@ export function HoldingForm({ kind, initial, fixedSymbol, submitLabel, onSubmit,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [costTouched, setCostTouched] = useState(Boolean(initial));
+  // Bumped after each add so the symbol box remounts empty.
+  const [resetCount, setResetCount] = useState(0);
 
   // Prefill the cost with today's price when a symbol is picked.
   useEffect(() => {
@@ -63,6 +65,7 @@ export function HoldingForm({ kind, initial, fixedSymbol, submitLabel, onSubmit,
         setCost("");
         setNote("");
         setCostTouched(false);
+        setResetCount((n) => n + 1);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
@@ -77,7 +80,7 @@ export function HoldingForm({ kind, initial, fixedSymbol, submitLabel, onSubmit,
         {!initial && !fixedSymbol && (
           <div className="field">
             <label className="label" htmlFor="holding-symbol">Symbol</label>
-            <SymbolSearch inputId="holding-symbol" keepValue width="100%" placeholder="AAPL" onSelect={(s) => setSymbol(s)} />
+            <SymbolSearch key={resetCount} inputId="holding-symbol" keepValue width="100%" placeholder="AAPL" onSelect={(s) => setSymbol(s)} />
           </div>
         )}
         <label className="field">

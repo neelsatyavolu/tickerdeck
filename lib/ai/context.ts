@@ -77,7 +77,7 @@ function symbolBlock(s: SymbolContext): string {
   if (s.forecast) {
     const f = s.forecast;
     lines.push(
-      `statistical range over ${f.horizonLabel} (Monte Carlo, ${Math.round(f.annualVol * 100)}% annual vol, ${Math.round(f.annualDrift * 100)}%/yr assumed drift): 5th ${usd(f.end.p5)} · 25th ${usd(f.end.p25)} · median ${usd(f.end.p50)} · 75th ${usd(f.end.p75)} · 95th ${usd(f.end.p95)} · P(gain) ${Math.round(f.probGain * 100)}%`,
+      `statistical range over ${f.horizonLabel} (Monte Carlo, ${Math.round(f.annualVol * 100)}% annual vol, median assumed to grow ${Math.round(f.annualDrift * 100)}%/yr): 5th ${usd(f.end.p5)} · 25th ${usd(f.end.p25)} · median ${usd(f.end.p50)} · 75th ${usd(f.end.p75)} · 95th ${usd(f.end.p95)} · P(gain) ${Math.round(f.probGain * 100)}%`,
     );
   }
   if (s.news.length) {

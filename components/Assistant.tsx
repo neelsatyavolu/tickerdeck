@@ -67,6 +67,22 @@ async function loadStatus(): Promise<{ status: Status; models: Models | null }> 
   }
 }
 
+// Images are dropped: model output can echo text from third-party headlines, and
+// an image URL would load automatically and could carry data off the page.
+const MD_COMPONENTS = {
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+  ),
+};
+
+function Markdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} unwrapDisallowed components={MD_COMPONENTS}>
+      {text}
+    </ReactMarkdown>
+  );
+}
+
 /** Reads the NDJSON stream from /api/ai/chat, calling onText for each chunk. */
 async function streamAnswer(body: object, onText: (t: string) => void, signal: AbortSignal): Promise<void> {
   const res = await fetch("/api/ai/chat", {
@@ -150,9 +166,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           ctrl.signal,
         );
       } catch (err) {
+        // Drop an empty assistant turn so it isn't shown or sent upstream next time.
+        setMessages((prev) => (prev[prev.length - 1]?.content ? prev : prev.slice(0, -1)));
         if (ctrl.signal.aborted) return;
         setError(err instanceof Error ? err.message : "The assistant failed.");
-        setMessages((prev) => (prev[prev.length - 1]?.content ? prev : prev.slice(0, -1)));
       } finally {
         if (abort.current === ctrl) setBusy(false);
       }
@@ -174,6 +191,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const stop = () => {
     abort.current?.abort();
     setBusy(false);
+    setMessages((prev) => (prev.length && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev));
   };
 
   const chooseProvider = (p: Provider) => {
@@ -234,7 +252,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 <div key={i} className="msg-user">{m.content}</div>
               ) : (
                 <div key={i} className="prose">
-                  {m.content ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown> : <span className="caret" aria-label="Thinking" />}
+                  {m.content ? <Markdown text={m.content} /> : <span className="caret" aria-label="Thinking" />}
                 </div>
               ),
             )

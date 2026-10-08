@@ -7,7 +7,7 @@ import type { Provider, Tokens } from "./providers";
 
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 const GROK_CHAT_URL = "https://api.x.ai/v1/chat/completions";
-const TIMEOUT_MS = 120_000;
+const IDLE_TIMEOUT_MS = 90_000;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -76,10 +76,30 @@ export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const parse = params.provider === "codex" ? codexEvent : chatEvent;
   const [url, init] = params.provider === "codex" ? codexRequest(params) : grokRequest(params);
+  const upstream = new AbortController();
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let closed = false;
+  let timedOut = false;
+  let idle: ReturnType<typeof setTimeout> | undefined;
+  // Long answers are fine as long as tokens keep arriving; only silence times out.
+  const armIdle = () => {
+    clearTimeout(idle);
+    idle = setTimeout(() => {
+      timedOut = true;
+      upstream.abort();
+    }, IDLE_TIMEOUT_MS);
+  };
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (obj: object) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      const send = (obj: object) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+        } catch {
+          closed = true;
+        }
+      };
       let finished = false;
       const handle = (event: TextEvent | null) => {
         if (!event || finished) return;
@@ -93,28 +113,43 @@ export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
         }
       };
 
+      armIdle();
       try {
-        const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+        const res = await fetch(url, { ...init, signal: upstream.signal });
         if (!res.ok || !res.body) {
           handle({ error: await upstreamError(res) });
         } else {
           const splitter = createSseSplitter((data) => handle(parse(data)));
           const decoder = new TextDecoder();
-          const reader = res.body.getReader();
+          reader = res.body.getReader();
           for (;;) {
             const { value, done } = await reader.read();
-            if (done) break;
+            if (done || closed) break;
+            armIdle();
             splitter.push(decoder.decode(value, { stream: true }));
           }
           splitter.flush();
           handle({ done: true });
         }
       } catch (err) {
-        const timedOut = err instanceof Error && err.name === "TimeoutError";
-        console.error(`[ai] ${params.provider} stream failed`, err);
-        handle({ error: timedOut ? "The model took too long to answer." : "Could not reach the model." });
+        if (!closed) {
+          console.error(`[ai] ${params.provider} stream failed`, err instanceof Error ? err.message : err);
+          handle({ error: timedOut ? "The model stopped responding." : "Could not reach the model." });
+        }
+      } finally {
+        clearTimeout(idle);
       }
-      controller.close();
+      if (!closed) {
+        closed = true;
+        controller.close();
+      }
+    },
+    // The browser went away (Stop, navigation): stop generating on the user's quota.
+    cancel() {
+      closed = true;
+      clearTimeout(idle);
+      upstream.abort();
+      reader?.cancel().catch(() => {});
     },
   });
 }

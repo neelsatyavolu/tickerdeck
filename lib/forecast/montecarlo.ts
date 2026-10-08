@@ -3,7 +3,9 @@
 // Each simulated day draws one historical day at random and applies that
 // day's return to every asset. Drawing whole days keeps the way assets moved
 // together. Historical mean returns are removed and replaced by a single
-// assumed drift, because one year of mean return is mostly noise.
+// assumed drift, because one year of mean return is mostly noise. The drift is
+// applied to log returns, so it sets the median's growth; the mean runs higher
+// by roughly σ²/2 a year.
 
 export const HORIZONS = { "1w": 5, "1m": 21, "3m": 63, "6m": 126, "1y": 252 } as const;
 export type Horizon = keyof typeof HORIZONS;

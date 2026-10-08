@@ -74,7 +74,9 @@ export function portfolioTotals(portfolio: Pick<Portfolio, "kind" | "starting_ca
   const isPaper = portfolio.kind === "paper" && portfolio.starting_cash !== null;
   const cash = isPaper ? (portfolio.starting_cash ?? 0) - allCost : 0;
   const basis = isPaper ? portfolio.starting_cash ?? 0 : cost;
-  const totalGain = isPaper ? marketValue + cash - basis : marketValue - cost;
+  // Unpriced positions count at cost so a missing quote doesn't read as a loss.
+  const unpricedCost = allCost - cost;
+  const totalGain = isPaper ? marketValue + unpricedCost + cash - basis : marketValue - cost;
 
   return {
     marketValue,

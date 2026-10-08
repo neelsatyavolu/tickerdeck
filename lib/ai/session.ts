@@ -53,8 +53,12 @@ function chunkString(s: string, size: number): string[] {
   return out;
 }
 
-export async function writeSession(provider: Provider, tokens: Tokens): Promise<void> {
-  const json = JSON.stringify(tokens);
+// Each session records the Supabase user it belongs to, so a different account
+// signing in on the same browser can't use it.
+type StoredSession = Tokens & { userId: string };
+
+export async function writeSession(provider: Provider, userId: string, tokens: Tokens): Promise<void> {
+  const json = JSON.stringify({ ...tokens, userId } satisfies StoredSession);
   const chunks = chunkString(json, CHUNK_SIZE);
   if (chunks.length > MAX_CHUNKS) {
     throw new Error(`${provider} session too large to fit in ${MAX_CHUNKS} cookies.`);
@@ -72,7 +76,7 @@ export async function clearSession(provider: Provider): Promise<void> {
   for (let i = 0; i < MAX_CHUNKS; i++) jar.delete(`${prefix}_${i}`);
 }
 
-async function readSessionRaw(provider: Provider): Promise<Tokens | null> {
+async function readSessionRaw(provider: Provider, userId: string): Promise<Tokens | null> {
   const jar = await cookies();
   const prefix = sessionPrefix(provider);
   let joined = "";
@@ -84,32 +88,45 @@ async function readSessionRaw(provider: Provider): Promise<Tokens | null> {
   if (!joined) return null;
   try {
     const parsed = JSON.parse(joined);
-    if (typeof parsed.accessToken !== "string" || typeof parsed.refreshToken !== "string") {
+    if (typeof parsed.accessToken !== "string" || typeof parsed.refreshToken !== "string" || parsed.userId !== userId) {
       return null;
     }
-    return parsed as Tokens;
+    const stored = parsed as StoredSession;
+    return { accessToken: stored.accessToken, refreshToken: stored.refreshToken, expiresAt: stored.expiresAt, idToken: stored.idToken, accountId: stored.accountId };
   } catch {
     return null;
   }
 }
 
 // Presence check only (no refresh) — used by the status endpoint.
-export async function hasSession(provider: Provider): Promise<boolean> {
-  return (await readSessionRaw(provider)) !== null;
+export async function hasSession(provider: Provider, userId: string): Promise<boolean> {
+  return (await readSessionRaw(provider, userId)) !== null;
 }
 
 // Returns a valid token, refreshing (and re-persisting) when near expiry.
-export async function getActiveSession(provider: Provider): Promise<Tokens | null> {
-  const session = await readSessionRaw(provider);
+export async function getActiveSession(provider: Provider, userId: string): Promise<Tokens | null> {
+  const session = await readSessionRaw(provider, userId);
   if (!session) return null;
   if (session.expiresAt > Date.now() + 30_000) return session;
   try {
     const refreshed = await refreshTokens(provider, session.refreshToken, session);
-    await writeSession(provider, refreshed);
+    await writeSession(provider, userId, refreshed);
     return refreshed;
   } catch (err) {
-    console.error(`[ai-session] ${provider} refresh failed:`, err);
-    await clearSession(provider);
+    console.error(`[ai-session] ${provider} refresh failed:`, err instanceof Error ? err.message : err);
+    // Only a rejected refresh token ends the session; network blips keep it for a retry.
+    if (isRejected(err)) await clearSession(provider);
     return null;
+  }
+}
+
+function isRejected(err: unknown): boolean {
+  return err instanceof Error && /\((400|401)\)/.test(err.message);
+}
+
+export async function clearAllSessions(): Promise<void> {
+  for (const p of ["codex", "grok"] as const) {
+    await clearSession(p);
+    await clearPkce(p);
   }
 }

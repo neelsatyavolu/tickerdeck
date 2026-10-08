@@ -48,6 +48,19 @@ describe("streamChat", () => {
     expect(out.error).toMatch(/Reconnect/);
   });
 
+  it("aborts the upstream request when the client cancels", async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      upstreamSignal = init.signal ?? undefined;
+      return Promise.resolve(sseResponse(['data: {"type":"response.output_text.delta","delta":"x"}\n\n']));
+    }));
+    const stream = streamChat({ provider: "codex", tokens, model: "m", system: "", messages: [{ role: "user", content: "x" }] });
+    const reader = stream.getReader();
+    await reader.read();
+    await reader.cancel();
+    expect(upstreamSignal?.aborted).toBe(true);
+  });
+
   it("reports network failures without throwing", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
     vi.spyOn(console, "error").mockImplementation(() => {});

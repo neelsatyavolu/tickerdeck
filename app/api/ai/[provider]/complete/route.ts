@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail, withUser } from "@/lib/api";
 import { exchangeCode, extractCodeAndState, isProvider } from "@/lib/ai/providers";
 import { clearPkce, readPkce, writeSession } from "@/lib/ai/session";
 
@@ -6,49 +7,33 @@ export const dynamic = "force-dynamic";
 
 // POST /api/ai/:provider/complete — finish OAuth with the callback link (ChatGPT)
 // or authorization code (Grok) the user pasted, exchanging it for tokens.
-export async function POST(req: Request, { params }: { params: Promise<{ provider: string }> }) {
-  const { provider } = await params;
-  if (!isProvider(provider)) {
-    return NextResponse.json({ ok: false, error: "Unknown provider." }, { status: 404 });
-  }
+export function POST(req: Request, { params }: { params: Promise<{ provider: string }> }) {
+  return withUser(async ({ user }) => {
+    const { provider } = await params;
+    if (!isProvider(provider)) return fail("Unknown provider.", 404);
 
-  let body: { callback?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body." }, { status: 400 });
-  }
-  const callback = typeof body.callback === "string" ? body.callback : "";
-  if (!callback) {
-    return NextResponse.json({ ok: false, error: "Paste the callback link or code." }, { status: 400 });
-  }
+    const body = (await req.json().catch(() => null)) as { callback?: unknown } | null;
+    const callback = typeof body?.callback === "string" ? body.callback : "";
+    if (!callback) return fail("Paste the callback link or code.", 400);
 
-  const { code, state } = extractCodeAndState(callback);
-  if (!code) {
-    return NextResponse.json(
-      { ok: false, error: "Could not find an authorization code in what you pasted." },
-      { status: 400 },
-    );
-  }
+    const { code, state } = extractCodeAndState(callback);
+    if (!code) return fail("Could not find an authorization code in what you pasted.", 400);
 
-  const pkce = await readPkce(provider);
-  if (!pkce) {
-    return NextResponse.json(
-      { ok: false, error: "This sign-in expired. Click Connect again." },
-      { status: 400 },
-    );
-  }
-  if ((provider === "codex" && pkce.state !== state) || (state && pkce.state !== state)) {
-    return NextResponse.json({ ok: false, error: "Sign-in state mismatch. Try again." }, { status: 400 });
-  }
+    const pkce = await readPkce(provider);
+    if (!pkce) return fail("This sign-in expired. Click Connect again.", 400);
+    // Codex always returns state; Grok's bare code has none and binds to the pending attempt.
+    if ((provider === "codex" && pkce.state !== state) || (state && pkce.state !== state)) {
+      return fail("Sign-in state mismatch. Try again.", 400);
+    }
 
-  try {
-    const tokens = await exchangeCode(provider, code, pkce.verifier);
-    await writeSession(provider, tokens);
-    await clearPkce(provider);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Token exchange failed.";
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
-  }
+    try {
+      const tokens = await exchangeCode(provider, code, pkce.verifier);
+      await writeSession(provider, user.id, tokens);
+      await clearPkce(provider);
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error(`[ai] ${provider} token exchange failed:`, err instanceof Error ? err.message : err);
+      return fail("Sign-in failed. The code may have expired. Click Connect again.", 502);
+    }
+  });
 }

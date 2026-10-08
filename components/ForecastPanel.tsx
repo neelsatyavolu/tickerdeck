@@ -75,7 +75,7 @@ export function ForecastPanel({ exposures, runKey, history, onAskOutlook }: Prop
             <Tile label="Annual volatility" value={plainPct(forecast.annualVol, 0)} />
           </div>
           <p className="notice" style={{ marginTop: 8 }}>
-            {forecast.paths.toLocaleString()} simulated paths resampling {forecast.sampleDays} trading days of returns, with an assumed {plainPct(forecast.annualDrift, 0)}/yr drift. This shows a range based on past volatility. It is not a prediction.
+            {forecast.paths.toLocaleString()} simulated paths resampling {forecast.sampleDays} trading days of returns, with the median assumed to grow {plainPct(forecast.annualDrift, 0)}/yr. This shows a range based on past volatility. It is not a prediction.
           </p>
         </div>
       )}

@@ -22,6 +22,8 @@ const LiveCtx = createContext<Ctx | null>(null);
 const SNAPSHOT_EVERY = 60_000;
 const FLUSH_EVERY = 400;
 const QUIET_AFTER = 90_000;
+const SNAPSHOT_BATCH = 50;
+const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,9}$/;
 
 export function LivePricesProvider({ children }: { children: React.ReactNode }) {
   const [prices, setPrices] = useState<Record<string, LivePrice>>({});
@@ -56,7 +58,20 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
     let cancelled = false;
     const load = async () => {
       try {
-        const { quotes } = await api<{ quotes: QuoteSnapshot[] }>(`/api/market/quotes?symbols=${encodeURIComponent(watchedKey)}`);
+        // Skip malformed symbols and stay under the route's 50-symbol limit,
+        // so one bad ticker never blanks every price.
+        const valid = watchedKey.split(",").filter((s) => SYMBOL_RE.test(s));
+        const batches: string[][] = [];
+        for (let i = 0; i < valid.length; i += SNAPSHOT_BATCH) batches.push(valid.slice(i, i + SNAPSHOT_BATCH));
+        const results = await Promise.all(
+          batches.map((b) =>
+            api<{ quotes: QuoteSnapshot[] }>(`/api/market/quotes?symbols=${encodeURIComponent(b.join(","))}`).catch((err) => {
+              console.warn("[prices] snapshot batch failed", err);
+              return { quotes: [] as QuoteSnapshot[] };
+            }),
+          ),
+        );
+        const quotes = results.flatMap((r) => r.quotes);
         if (cancelled) return;
         setPrices((prev) => {
           const next = { ...prev };
