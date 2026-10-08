@@ -10,7 +10,7 @@ Personal stock and portfolio tracker. It covers:
 ## Stack
 
 - **App:** Next.js 16 (App Router), deployed on Vercel.
-- **Database:** Supabase (Auth + Postgres). Every table has row-level security, so each user can only read and write their own rows.
+- **Database and sign-in:** Neon Postgres plus Neon Auth (Vercel Marketplace). All reads and writes go through server routes, and every query is scoped to the signed-in user.
 - **Market data:**
   - Finnhub: quotes, the trade stream, profiles, ratings, news, and symbol search.
   - Yahoo Finance: daily price history and analyst price targets. These endpoints are unofficial and all Yahoo code lives in `lib/market/yahoo.ts`.
@@ -18,11 +18,10 @@ Personal stock and portfolio tracker. It covers:
 
 ## Setup
 
-1. Add Supabase to the Vercel project (Marketplace). This sets `NEXT_PUBLIC_SUPABASE_URL` and the anon key.
-2. Run the migration in `supabase/migrations/` against the database (SQL editor or `psql "$POSTGRES_URL" -f …`).
-3. Add `FINNHUB_API_KEY` to the Vercel project, then run `vercel env pull .env.local`.
-4. In Supabase Auth → URL configuration, set the Site URL to the deployed origin and add `http://localhost:3000/**` as a redirect URL.
-5. Run `pnpm install` then `pnpm dev`.
+1. Add Neon to the Vercel project from the Marketplace and turn on Neon Auth. This sets `DATABASE_URL`, `NEON_AUTH_BASE_URL` and the other database variables.
+2. Add `NEON_AUTH_COOKIE_SECRET` (any random string of 32+ characters) and `FINNHUB_API_KEY` to the project.
+3. Run `pnpm build`. It applies `db/migrations/*.sql` before `next build`, so every deploy migrates automatically. Locally, `pnpm migrate` does the same.
+4. For local dev, connect the Neon resource to the Development environment, run `vercel env pull .env.local`, then `pnpm dev`.
 
 ## How it fits together
 
@@ -30,7 +29,7 @@ Personal stock and portfolio tracker. It covers:
 | --- | --- |
 | Forecast math (pure, tested) | `lib/forecast/montecarlo.ts`: resamples whole historical days, so the way assets move together is kept. Historical drift is replaced by an assumed 7%/yr. |
 | Portfolio math | `lib/portfolio/math.ts`: merges lots, then computes gain/loss, weights, and paper cash. |
-| Data access | `lib/portfolio/repo.ts`: the browser writes directly to Supabase (RLS enforces ownership); the server reads for AI context. |
+| Data access | `lib/portfolio/repo.ts`: server-only SQL, with every statement filtered by `user_id`. The browser calls `/api/portfolios` and `/api/holdings`. |
 | Live prices | `components/LivePrices.tsx`: a REST snapshot, then the Finnhub WebSocket. The socket key is only served to signed-in users. |
 | AI sign-in | `app/api/ai/[provider]/*`: paste-the-callback OAuth via `shared-ai-auth`. Tokens are kept in chunked httpOnly cookies, never in the database. |
 | AI chat | `app/api/ai/chat`: gathers portfolios, quotes, analyst data, news, and forecasts into the system prompt (`lib/ai/context.ts`), then streams NDJSON back. Read-only: the assistant cannot change data. |
@@ -40,5 +39,5 @@ Personal stock and portfolio tracker. It covers:
 ```sh
 pnpm test        # unit tests (vitest)
 pnpm typecheck
-pnpm test:e2e    # Playwright; needs SUPABASE_SERVICE_ROLE_KEY + FINNHUB_API_KEY in env
+pnpm test:e2e    # Playwright; needs the Neon + Finnhub env vars locally
 ```

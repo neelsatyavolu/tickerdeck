@@ -7,7 +7,7 @@ import { useLivePrices } from "@/components/LivePrices";
 import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
 import { Change, ErrorText, Tile } from "@/components/ui";
-import { createPortfolio } from "@/lib/portfolio/repo";
+import { createPortfolio } from "@/lib/client/portfolios";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "@/lib/portfolio/math";
 import { pct, signedUsd, tone, usd } from "@/lib/format";
 
@@ -70,7 +70,7 @@ export default function Dashboard() {
                 submitLabel="Create"
                 onCancel={() => setCreating(false)}
                 onSubmit={async (values) => {
-                  const id = await mutate((db) => createPortfolio(db, values));
+                  const id = await mutate(() => createPortfolio(values));
                   setCreating(false);
                   router.push(`/p/${id}`);
                 }}

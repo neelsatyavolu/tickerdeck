@@ -1,29 +1,29 @@
-import { createClient } from "@supabase/supabase-js";
+import { neon } from "@neondatabase/serverless";
 import { expect, test } from "@playwright/test";
 
-// Signs in a throwaway user through /auth/confirm with an admin-generated
-// magic link, then walks the main flow. Needs NEXT_PUBLIC_SUPABASE_URL,
-// SUPABASE_SERVICE_ROLE_KEY and FINNHUB_API_KEY in the environment.
+// Creates a throwaway account through the sign-up form, walks the main flow,
+// then deletes the account's data. Needs DATABASE_URL, NEON_AUTH_BASE_URL,
+// NEON_AUTH_COOKIE_SECRET and FINNHUB_API_KEY in the environment.
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-test.skip(!url || !serviceKey, "Supabase admin credentials not set");
+const dbUrl = process.env.DATABASE_URL;
+test.skip(!dbUrl || !process.env.NEON_AUTH_BASE_URL, "Neon env not set");
 
 const email = `e2e+${Date.now()}@tickerdeck.test`;
+const password = `e2e-${Math.random().toString(36).slice(2)}-pass`;
 
 test.afterAll(async () => {
-  const admin = createClient(url!, serviceKey!, { auth: { persistSession: false } });
-  const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
-  const user = data?.users?.find((u) => u.email === email);
-  if (user) await admin.auth.admin.deleteUser(user.id);
+  const sql = neon(dbUrl!);
+  await sql`delete from portfolios where name = 'E2E Core' and user_id in (select id::text from neon_auth."user" where email = ${email})`;
+  await sql`delete from neon_auth."user" where email = ${email}`.catch(() => {});
 });
 
-test("sign in, create a portfolio, add a holding, see a live price and forecast", async ({ page }) => {
-  const admin = createClient(url!, serviceKey!, { auth: { persistSession: false } });
-  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-  expect(error).toBeNull();
-  await page.goto(`/auth/confirm?token_hash=${data.properties!.hashed_token}&type=magiclink`);
+test("sign up, create a portfolio, add a holding, see a live price and forecast", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByRole("button", { name: "Create an account instead" }).click();
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(page.getByText("All portfolios")).toBeVisible();
   await page.getByRole("button", { name: "New portfolio" }).first().click();

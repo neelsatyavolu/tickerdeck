@@ -17,7 +17,7 @@ import { pct, signedUsd, tone, usd } from "@/lib/format";
 import type { HistoryRange } from "@/lib/market/types";
 import { holdingsValueSeries } from "@/lib/portfolio/history";
 import { aggregatePositions, portfolioTotals } from "@/lib/portfolio/math";
-import { addHolding, deletePortfolio, updatePortfolio } from "@/lib/portfolio/repo";
+import { addHolding, deletePortfolio, updatePortfolio } from "@/lib/client/portfolios";
 
 const RANGES = ["3mo", "6mo", "1y", "2y"] as const satisfies readonly HistoryRange[];
 
@@ -61,7 +61,7 @@ export default function PortfolioPage() {
   const remove = async () => {
     if (!window.confirm(`Delete "${portfolio.name}" and all its holdings?`)) return;
     try {
-      await mutate((db) => deletePortfolio(db, portfolio.id));
+      await mutate(() => deletePortfolio(portfolio.id));
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete.");
@@ -89,7 +89,7 @@ export default function PortfolioPage() {
             submitLabel="Save"
             onCancel={() => setEditing(false)}
             onSubmit={async (values) => {
-              await mutate((db) => updatePortfolio(db, portfolio.id, values));
+              await mutate(() => updatePortfolio(portfolio.id, values));
               setEditing(false);
             }}
           />
@@ -118,7 +118,7 @@ export default function PortfolioPage() {
               submitLabel="Add"
               onCancel={() => setAdding(false)}
               onSubmit={async (values) => {
-                await mutate((db) => addHolding(db, portfolio.id, values));
+                await mutate(() => addHolding(portfolio.id, values));
               }}
             />
           </div>

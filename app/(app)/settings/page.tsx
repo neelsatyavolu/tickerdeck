@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { ErrorText } from "@/components/ui";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth/client";
 
 type Provider = "codex" | "grok";
 
@@ -106,11 +106,19 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
 
 export default function SettingsPage() {
   const { status, refreshStatus } = useAssistant();
-  const [email, setEmail] = useState<string | null>(null);
+  const session = authClient.useSession();
+  const email = session.data?.user?.email ?? null;
+  const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
-    supabaseBrowser().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-  }, []);
+  const signOut = async () => {
+    setSigningOut(true);
+    // Drop AI tokens first, while the session still lets the request through the proxy.
+    await fetch("/auth/signout", { method: "POST" }).catch(() => {});
+    await authClient.signOut().catch(() => {});
+    // Full reload on purpose: /login lives outside the signed-in app shell.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/login");
+  };
 
   return (
     <div>
@@ -132,9 +140,7 @@ export default function SettingsPage() {
         <div className="spread"><h2 className="display">Account</h2></div>
         <div className="row">
           <span className="mono">{email ?? "…"}</span>
-          <form action="/auth/signout" method="post">
-            <button className="btn btn-ghost">Sign out</button>
-          </form>
+          <button className="btn btn-ghost" onClick={signOut} disabled={signingOut}>Sign out</button>
         </div>
       </section>
     </div>

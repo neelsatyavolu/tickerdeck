@@ -14,7 +14,7 @@ export const maxDuration = 300;
 // subscription, grounded in their portfolios and live market data.
 // Streams NDJSON: {"t": text} … {"done": true} | {"e": error}.
 export function POST(req: Request) {
-  return withUser(async ({ supabase, user }) => {
+  return withUser(async ({ user }) => {
     const parsed = chatRequestSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     const { provider, model, messages, focus } = parsed.data;
@@ -23,7 +23,7 @@ export function POST(req: Request) {
     if (!tokens) return fail(`Connect ${PROVIDERS[provider].label} in Settings first.`, 409);
 
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-    const context = await gatherContext(supabase, {
+    const context = await gatherContext(user.id, {
       lastUserMessage: lastUser,
       focusPortfolioId: focus?.portfolioId,
       focusSymbol: focus?.symbol,

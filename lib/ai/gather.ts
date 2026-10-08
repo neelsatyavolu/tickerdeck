@@ -1,5 +1,4 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { forecastExposures } from "../forecast/service";
 import { news, profile, quote, quotes, recommendations } from "../market/finnhub";
 import { analystTargets } from "../market/yahoo";
@@ -37,10 +36,10 @@ async function symbolContext(symbol: string): Promise<SymbolContext | null> {
 
 /** Everything the assistant should know for this turn. Failures degrade to less context, never to an error. */
 export async function gatherContext(
-  db: SupabaseClient,
+  userId: string,
   opts: { lastUserMessage: string; focusPortfolioId?: string; focusSymbol?: string },
 ): Promise<ContextInput> {
-  const portfolios = await listPortfolios(db);
+  const portfolios = await listPortfolios(userId);
   const symbols = uniqueSymbols(portfolios).slice(0, MAX_PORTFOLIO_SYMBOLS);
   const snap = symbols.length ? await quotes(symbols).catch(() => ({ quotes: [], failed: symbols })) : { quotes: [] };
   const priceMap: Record<string, Quote> = Object.fromEntries(snap.quotes.map((q) => [q.symbol, { price: q.price, prevClose: q.prevClose }]));

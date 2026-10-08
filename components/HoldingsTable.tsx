@@ -5,7 +5,7 @@ import { Fragment, useState } from "react";
 import { pct, shares, signedUsd, tone, usd } from "@/lib/format";
 import type { Position } from "@/lib/portfolio/math";
 import type { Holding, Portfolio } from "@/lib/portfolio/types";
-import { deleteHolding, updateHolding } from "@/lib/portfolio/repo";
+import { deleteHolding, updateHolding } from "@/lib/client/portfolios";
 import { HoldingForm } from "./HoldingForm";
 import { usePortfolios } from "./Portfolios";
 import { ErrorText } from "./ui";
@@ -25,7 +25,7 @@ export function HoldingsTable({ portfolio, positions }: Props) {
     if (!window.confirm(`Delete this ${h.symbol} lot?`)) return;
     setError(null);
     try {
-      await mutate((db) => deleteHolding(db, h.id));
+      await mutate(() => deleteHolding(h.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete.");
     }
@@ -93,7 +93,7 @@ export function HoldingsTable({ portfolio, positions }: Props) {
                               submitLabel="Save lot"
                               onCancel={() => setEditing(null)}
                               onSubmit={async (values) => {
-                                await mutate((db) => updateHolding(db, h.id, values));
+                                await mutate(() => updateHolding(h.id, values));
                                 setEditing(null);
                               }}
                             />

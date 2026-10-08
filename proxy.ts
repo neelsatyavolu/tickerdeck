@@ -1,10 +1,12 @@
 import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
+import { auth } from "@/lib/auth/server";
 
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
+// Signed-out visitors go to /login. API routes are excluded: they answer 401
+// JSON themselves (see lib/api.ts).
+export function proxy(request: NextRequest) {
+  return auth().middleware({ loginUrl: "/login" })(request);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

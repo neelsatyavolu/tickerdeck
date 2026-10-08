@@ -1,8 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
-import * as repo from "@/lib/portfolio/repo";
+import { listPortfolios } from "@/lib/client/portfolios";
 import type { Portfolio } from "@/lib/portfolio/types";
 
 type Ctx = {
@@ -11,13 +10,13 @@ type Ctx = {
   error: string | null;
   refresh: () => Promise<void>;
   /** Runs a write, then reloads. Throws the write's error for the form to show. */
-  mutate: <T>(fn: (db: ReturnType<typeof supabaseBrowser>) => Promise<T>) => Promise<T>;
+  mutate: <T>(fn: () => Promise<T>) => Promise<T>;
 };
 
 const PortfoliosCtx = createContext<Ctx | null>(null);
 
 function load(): Promise<Portfolio[] | Error> {
-  return repo.listPortfolios(supabaseBrowser()).catch((err) => new Error(err instanceof Error ? err.message : "Could not load portfolios."));
+  return listPortfolios().catch((err) => new Error(err instanceof Error ? err.message : "Could not load portfolios."));
 }
 
 export function PortfoliosProvider({ children }: { children: React.ReactNode }) {
@@ -45,8 +44,8 @@ export function PortfoliosProvider({ children }: { children: React.ReactNode }) 
   }, [apply]);
 
   const mutate = useCallback(
-    async <T,>(fn: (db: ReturnType<typeof supabaseBrowser>) => Promise<T>) => {
-      const result = await fn(supabaseBrowser());
+    async <T,>(fn: () => Promise<T>) => {
+      const result = await fn();
       await refresh();
       return result;
     },

@@ -15,7 +15,7 @@ import { api } from "@/lib/client/api";
 import { timeAgo, usd } from "@/lib/format";
 import type { AnalystTargets, NewsItem, Profile, QuoteSnapshot, Recommendation } from "@/lib/market/types";
 import { HISTORY_RANGES, type HistoryRange } from "@/lib/market/types";
-import { addHolding } from "@/lib/portfolio/repo";
+import { addHolding } from "@/lib/client/portfolios";
 
 type Panel<T> = { value: T | null; error: string | null };
 type StockInfo = {
@@ -167,7 +167,7 @@ function AddToPortfolio({ symbol }: { symbol: string }) {
           submitLabel={`Add ${symbol}`}
           onCancel={() => setOpen(false)}
           onSubmit={async (values) => {
-            await mutate((db) => addHolding(db, chosen.id, values));
+            await mutate(() => addHolding(chosen.id, values));
             setDone(`Added to ${chosen.name}.`);
             setOpen(false);
           }}

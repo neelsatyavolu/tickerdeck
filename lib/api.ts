@@ -1,8 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import type { User } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { currentUser } from "./supabase/server";
+import { currentUser, type SessionUser } from "./auth/server";
 import { UpstreamError } from "./market/http";
 import { ZodError } from "zod";
 import { firstIssue } from "./validation";
@@ -19,20 +17,20 @@ export function fail(error: string, status: number) {
   return NextResponse.json<ApiResult<never>>({ ok: false, error }, { status });
 }
 
-type Authed = { user: User; supabase: SupabaseClient };
+type Authed = { user: SessionUser };
 
 /** Run a handler for a signed-in user; map known errors to clean responses. */
 export async function withUser(handler: (ctx: Authed) => Promise<Response>): Promise<Response> {
-  let ctx: { user: User | null; supabase: SupabaseClient };
+  let user: SessionUser | null;
   try {
-    ctx = await currentUser();
+    user = await currentUser();
   } catch (err) {
     console.error("[api] auth check failed", err);
     return fail("Sign-in service unavailable.", 503);
   }
-  if (!ctx.user) return fail("Sign in first.", 401);
+  if (!user) return fail("Sign in first.", 401);
   try {
-    return await handler({ user: ctx.user, supabase: ctx.supabase });
+    return await handler({ user });
   } catch (err) {
     if (err instanceof UpstreamError) {
       console.warn(`[api] ${err.message}`);
