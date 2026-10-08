@@ -60,8 +60,8 @@ export function FanChart({ history, forecast, height = 260 }: Props) {
             {ticks.map((t) => (
               <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t)}</text>
             ))}
-            <text x={PAD.left} y={height - 6}>{shortDate(tStart)}</text>
-            <text x={x(t0)} y={height - 6} textAnchor="middle">today</text>
+            {history.length > 1 && <text x={PAD.left} y={height - 6}>{shortDate(tStart)}</text>}
+            <text x={x(t0)} y={height - 6} textAnchor={history.length > 1 ? "middle" : "start"}>today</text>
             <text x={width - PAD.right} y={height - 6} textAnchor="end">{shortDate(tEnd)}</text>
           </g>
           <line x1={x(t0)} x2={x(t0)} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />

@@ -45,8 +45,8 @@ test("sign up, create a portfolio, add a holding, see a live price and forecast"
   await expect(page.getByText(/Median in 3 months/)).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("img", { name: /Forecast range/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "AAPL" }).click();
-  await expect(page.getByRole("heading", { name: "AAPL" })).toBeVisible();
+  await page.getByRole("link", { name: "AAPL", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "AAPL", exact: true })).toBeVisible();
   await expect(page.getByText("Price targets")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Key statistics" })).toBeVisible();
   await expect(page.getByText("P/E (TTM)")).toBeVisible();

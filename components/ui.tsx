@@ -26,7 +26,7 @@ export function Change({ amount, percent }: { amount?: number | null; percent?: 
   );
 }
 
-const STATUS_TEXT = { connecting: "connecting", live: "live", quiet: "market quiet", offline: "delayed" } as const;
+const STATUS_TEXT = { connecting: "connecting", live: "live", quiet: "market quiet", offline: "updates every min" } as const;
 
 export function FeedBadge() {
   const { status, lastTrade } = useFeedStatus();
@@ -45,7 +45,7 @@ export function FeedBadge() {
           : undefined;
   return (
     <span className="status" title={title} aria-live="polite">
-      <span className={`dot ${status === "live" ? "live" : status === "offline" ? "err" : ""}`} />
+      <span className={`dot ${status === "live" ? "live" : ""}`} />
       {STATUS_TEXT[status]}
       {status === "live" && <span className="caret" aria-hidden="true" />}
     </span>

@@ -38,7 +38,7 @@ export default function PortfolioPage() {
   const totals = portfolio ? portfolioTotals(portfolio, positions) : null;
   const sharesBySymbol = useMemo(() => Object.fromEntries(positions.map((p) => [p.symbol, p.shares])), [positions]);
   const held = positions.filter((p) => p.shares > 0).map((p) => p.symbol);
-  const { data: histories, failed } = useHistories(held, range);
+  const { data: histories, failed, loading: historyLoading } = useHistories(held, range);
   const { data: yearHistories } = useHistories(held, "1y");
   const valueSeries = useMemo(() => holdingsValueSeries(histories, sharesBySymbol), [histories, sharesBySymbol]);
   const yearSeries = useMemo(() => holdingsValueSeries(yearHistories, sharesBySymbol), [yearHistories, sharesBySymbol]);
@@ -137,7 +137,11 @@ export default function PortfolioPage() {
               <h2 className="display">Value of current holdings</h2>
               <Seg label="History range" value={range} options={RANGES} onChange={setRange} />
             </div>
-            <LineChart points={valueSeries} label="Value of current holdings" />
+            {historyLoading && valueSeries.length === 0 ? (
+              <div className="notice">Loading history<span className="caret" aria-hidden="true" /></div>
+            ) : (
+              <LineChart points={valueSeries} label="Value of current holdings" />
+            )}
             <p className="notice">What today&apos;s shares would have been worth each day. It ignores when you bought them.{failed.length > 0 && ` No history for ${failed.join(", ")}.`}</p>
           </section>
 
