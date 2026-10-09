@@ -48,6 +48,19 @@ test("sign up, create a portfolio, add a holding, see a live price and forecast"
   await page.getByRole("link", { name: "AAPL", exact: true }).click();
   await expect(page.getByRole("heading", { name: "AAPL", exact: true })).toBeVisible();
   await expect(page.getByText("Price targets")).toBeVisible();
+
+  // Press and drag across the price chart to measure the move between two points.
+  const chart = page.getByRole("img", { name: /^AAPL price/ });
+  const box = (await chart.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.4);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.4, { steps: 8 });
+  const measured = page.locator(".measure-tip");
+  await expect(measured).toContainText("→");
+  await expect(measured).toContainText(/[+−]\$[\d,.]+ \([+−][\d.]+%\)/);
+  await expect(measured).toContainText(/\d+ days/);
+  await page.mouse.up();
+  await expect(measured).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Key statistics" })).toBeVisible();
   await expect(page.getByText("P/E (TTM)")).toBeVisible();
   await expect(page.getByRole("img", { name: /AAPL price/ })).toBeVisible();

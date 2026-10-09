@@ -299,3 +299,8 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 .list-tab:hover { color: var(--fg); text-decoration: none; }
 .list-tab[aria-current="page"] { color: var(--fg); border-bottom-color: var(--accent); }
 .list-tab .count { color: var(--fg-4); margin-left: 6px; }
+
+/* Drag-to-measure */
+.chart svg { touch-action: pan-y; }
+.chart .measure-tip { transform: translate(-50%, 0); margin-top: 0; }
+.chart-hint { position: absolute; top: 0; right: 12px; font-family: var(--mono); font-size: 11px; color: var(--fg-4); pointer-events: none; }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { nearestIndex, niceTicks, scale, tickLabel } from "@/lib/chart";
-import { points as fmtPoints, shortDate, usd } from "@/lib/format";
+import { niceTicks, scale, tickLabel } from "@/lib/chart";
+import { measure } from "@/lib/measure";
+import { pct, points as fmtPoints, shortDate, usd } from "@/lib/format";
+import { useDragMeasure } from "./useDragMeasure";
 import { useWidth } from "./useWidth";
 
 export type SeriesPoint = { t: number; v: number; volume?: number };
@@ -30,21 +31,22 @@ const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compa
 export function LineChart({ points, height = 260, label, overlay, showVolume, money = true }: Props) {
   const fmt = (n: number) => (money ? usd(n) : fmtPoints(n));
   const [ref, width] = useWidth<HTMLDivElement>();
-  const [hover, setHover] = useState<number | null>(null);
+  const enough = points.length >= 2;
+  const t0 = enough ? points[0].t : 0;
+  const t1 = enough ? points[points.length - 1].t : 1;
+  const x = scale(t0, t1, PAD.left, width - PAD.right);
+  const xs = points.map((p) => x(p.t));
+  const { hover, anchor, measuring, handlers } = useDragMeasure(xs);
 
-  if (points.length < 2) return <div className="notice">Not enough history to chart.</div>;
+  if (!enough) return <div className="notice">Not enough history to chart.</div>;
 
-  const t0 = points[0].t;
-  const t1 = points[points.length - 1].t;
   const over = overlay?.points.filter((p) => p.t >= t0 - 40 * 86_400_000 && p.t <= t1) ?? [];
   const hasVolume = Boolean(showVolume && points.some((p) => p.volume));
   const plotBottom = height - PAD.bottom - (hasVolume ? VOLUME_H + 8 : 0);
 
   const vs = [...points.map((p) => p.v), ...over.map((p) => p.v)];
   const ticks = niceTicks(Math.min(...vs), Math.max(...vs), 4);
-  const x = scale(t0, t1, PAD.left, width - PAD.right);
   const y = scale(ticks[0], ticks[ticks.length - 1], plotBottom, PAD.top);
-  const xs = points.map((p) => x(p.t));
   const line = points.map((p, i) => `${i ? "L" : "M"}${xs[i].toFixed(1)},${y(p.v).toFixed(1)}`).join("");
   const area = `${line}L${xs[xs.length - 1].toFixed(1)},${plotBottom}L${xs[0].toFixed(1)},${plotBottom}Z`;
 
@@ -66,15 +68,13 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
   const h = hover === null ? null : points[hover];
   const hTarget = h ? [...over].reverse().find((p) => p.t <= h.t) : undefined;
 
-  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setHover(nearestIndex(xs, e.clientX - rect.left));
-  };
+  const m = measuring && anchor !== null && hover !== null ? measure(points, anchor, hover) : null;
+  const mColor = m && m.change < 0 ? "var(--danger)" : "var(--ok)";
 
   return (
     <div>
       <div className="chart" ref={ref}>
-        <svg width={width} height={height} role="img" aria-label={`${label}: ${fmt(first.v)} on ${shortDate(first.t)} to ${fmt(last.v)} on ${shortDate(last.t)}`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+        <svg width={width} height={height} role="img" aria-label={`${label}: ${fmt(first.v)} on ${shortDate(first.t)} to ${fmt(last.v)} on ${shortDate(last.t)}`} {...handlers} style={{ cursor: "crosshair" }}>
           <g className="grid">
             {ticks.map((t) => (
               <line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
@@ -101,14 +101,36 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
           {overlayPath && <path d={overlayPath} fill="none" stroke="var(--fg-2)" strokeWidth={2} strokeLinejoin="round" />}
           <path d={line} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           <circle cx={xs[xs.length - 1]} cy={y(last.v)} r={4} fill="var(--accent)" stroke="var(--bg)" strokeWidth={2} />
-          {h && hover !== null && (
+          {m && (
+            <g aria-hidden="true">
+              <rect x={xs[m.lo]} y={PAD.top} width={Math.max(1, xs[m.hi] - xs[m.lo])} height={plotBottom - PAD.top} fill={mColor} opacity={0.12} />
+              {[m.lo, m.hi].map((i) => (
+                <g key={i}>
+                  <line x1={xs[i]} x2={xs[i]} y1={PAD.top} y2={plotBottom} stroke={mColor} strokeWidth={1} />
+                  <circle cx={xs[i]} cy={y(points[i].v)} r={4} fill={mColor} stroke="var(--bg)" strokeWidth={2} />
+                </g>
+              ))}
+            </g>
+          )}
+          {anchor === null && hover !== null && <div className="chart-hint" aria-hidden="true">drag to measure</div>}
+        {!m && h && hover !== null && (
             <g>
               <line x1={xs[hover]} x2={xs[hover]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />
               <circle cx={xs[hover]} cy={y(h.v)} r={4} fill="var(--accent)" stroke="var(--bg)" strokeWidth={2} />
             </g>
           )}
         </svg>
-        {h && hover !== null && (
+        {m && (
+          <div className="tooltip measure-tip" style={{ left: (xs[m.lo] + xs[m.hi]) / 2, top: PAD.top + 4 }} role="status">
+            <div className="t-label">{shortDate(m.from.t)} → {shortDate(m.to.t)} · {m.days} day{m.days === 1 ? "" : "s"}</div>
+            <div style={{ color: mColor }}>
+              {m.change >= 0 ? "+" : "−"}{fmt(Math.abs(m.change))} ({pct(m.pct)})
+            </div>
+            <div className="t-label">{fmt(m.from.v)} → {fmt(m.to.v)}</div>
+          </div>
+        )}
+        {anchor === null && hover !== null && <div className="chart-hint" aria-hidden="true">drag to measure</div>}
+        {!m && h && hover !== null && (
           <div className="tooltip" style={{ left: xs[hover], top: y(h.v) }}>
             <div className="t-label">{shortDate(h.t)}</div>
             <div>{fmt(h.v)}</div>

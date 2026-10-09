@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { nearestIndex, niceTicks, scale } from "@/lib/chart";
-import { pct, shortDate } from "@/lib/format";
+import { niceTicks, scale } from "@/lib/chart";
+import { pct, shortDate, tone } from "@/lib/format";
 import type { PricePoint } from "@/lib/market/types";
+import { useDragMeasure } from "./useDragMeasure";
 import { useWidth } from "./useWidth";
 
 type Series = { symbol: string; points: PricePoint[] };
@@ -40,18 +40,27 @@ function spreadLabels(ys: { i: number; y: number }[], top: number, bottom: numbe
   return new Map(sorted.map((s) => [s.i, s.y]));
 }
 
+/** Each series' change between two dates, from their values relative to the start. */
+export function spanChanges(lines: { symbol: string; values: (number | null)[] }[], lo: number, hi: number) {
+  return lines.map((l, i) => {
+    const a = l.values[lo];
+    const b = l.values[hi];
+    return { symbol: l.symbol, i, change: a === null || b === null ? null : (1 + b) / (1 + a) - 1 };
+  });
+}
+
 export function CompareChart({ series, height = 260 }: { series: Series[]; height?: number }) {
   const [ref, width] = useWidth<HTMLDivElement>();
-  const [hover, setHover] = useState<number | null>(null);
   const usable = series.filter((s) => s.points.length > 1);
+  const { dates, lines } = normalize(usable);
+  const x = scale(dates[0] ?? 0, dates[dates.length - 1] ?? 1, PAD.left, width - PAD.right);
+  const xs = dates.map(x);
+  const { hover, anchor, measuring, handlers } = useDragMeasure(xs);
   if (usable.length === 0) return <div className="notice">No history to compare.</div>;
 
-  const { dates, lines } = normalize(usable);
   const all = lines.flatMap((l) => l.values.filter((v): v is number => v !== null));
   const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all), 4);
-  const x = scale(dates[0], dates[dates.length - 1], PAD.left, width - PAD.right);
   const y = scale(ticks[0], ticks[ticks.length - 1], height - PAD.bottom, PAD.top);
-  const xs = dates.map(x);
   const ends = lines.map((l, i) => ({ i, y: y([...l.values].reverse().find((v) => v !== null) ?? 0) }));
   const labelY = spreadLabels(ends, PAD.top + 4, height - PAD.bottom);
 
@@ -69,7 +78,7 @@ export function CompareChart({ series, height = 260 }: { series: Series[]; heigh
     return d;
   };
 
-  const onMove = (e: React.PointerEvent<SVGSVGElement>) => setHover(nearestIndex(xs, e.clientX - e.currentTarget.getBoundingClientRect().left));
+  const span = measuring && anchor !== null && hover !== null ? { lo: Math.min(anchor, hover), hi: Math.max(anchor, hover) } : null;
   const finals = lines.map((l) => [...l.values].reverse().find((v) => v !== null) ?? null);
 
   return (
@@ -80,8 +89,8 @@ export function CompareChart({ series, height = 260 }: { series: Series[]; heigh
           height={height}
           role="img"
           aria-label={`Change since ${shortDate(dates[0])}: ${lines.map((l, i) => `${l.symbol} ${pct(finals[i], 1)}`).join(", ")}`}
-          onPointerMove={onMove}
-          onPointerLeave={() => setHover(null)}
+          {...handlers}
+          style={{ cursor: "crosshair" }}
         >
           <g className="grid">
             {ticks.map((t) => <line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} style={t === 0 ? { stroke: "var(--border-strong)" } : undefined} />)}
@@ -102,9 +111,29 @@ export function CompareChart({ series, height = 260 }: { series: Series[]; heigh
               </text>
             ))}
           </g>
-          {hover !== null && <line x1={xs[hover]} x2={xs[hover]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />}
+          {span && (
+            <g aria-hidden="true">
+              <rect x={xs[span.lo]} y={PAD.top} width={Math.max(1, xs[span.hi] - xs[span.lo])} height={height - PAD.bottom - PAD.top} fill="var(--fg)" opacity={0.06} />
+              <line x1={xs[span.lo]} x2={xs[span.lo]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />
+              <line x1={xs[span.hi]} x2={xs[span.hi]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />
+            </g>
+          )}
+          {!span && hover !== null && <line x1={xs[hover]} x2={xs[hover]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />}
         </svg>
-        {hover !== null && (
+        {anchor === null && hover !== null && <div className="chart-hint" aria-hidden="true">drag to measure</div>}
+        {span && (
+          <div className="tooltip measure-tip" style={{ left: (xs[span.lo] + xs[span.hi]) / 2, top: PAD.top + 4 }} role="status">
+            <div className="t-label">{shortDate(dates[span.lo])} → {shortDate(dates[span.hi])}</div>
+            {spanChanges(lines, span.lo, span.hi)
+              .sort((a, b) => (b.change ?? -Infinity) - (a.change ?? -Infinity))
+              .map((c) => (
+                <div key={c.symbol}>
+                  <span style={{ color: colorOf(c.i) }}>■</span> {c.symbol} <span className={tone(c.change)}>{pct(c.change, 1)}</span>
+                </div>
+              ))}
+          </div>
+        )}
+        {!span && hover !== null && (
           <div className="tooltip" style={{ left: xs[hover], top: PAD.top + 40 }}>
             <div className="t-label">{shortDate(dates[hover])}</div>
             {lines
