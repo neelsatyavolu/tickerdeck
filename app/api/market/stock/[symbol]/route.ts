@@ -1,7 +1,7 @@
 import { fail, ok, withUser } from "@/lib/api";
-import { earnings, metrics, news, peers, profile, quote, recommendations } from "@/lib/market/finnhub";
+import { earnings, metrics, news, peers, profile, recommendations } from "@/lib/market/finnhub";
 import { summary } from "@/lib/market/nasdaq";
-import { analystTargets } from "@/lib/market/sources";
+import { analystTargets, quote } from "@/lib/market/sources";
 import { buildKeyStats } from "@/lib/market/stats";
 import { firstIssue, symbolSchema } from "@/lib/validation";
 

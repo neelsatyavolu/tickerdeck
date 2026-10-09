@@ -13,6 +13,8 @@ export type FeedStatus = "connecting" | "live" | "quiet" | "offline";
 
 type Ctx = {
   prices: Record<string, LivePrice>;
+  /** Symbols a snapshot has answered for, priced or not (lets loaders stop waiting). */
+  checked: Record<string, true>;
   status: FeedStatus;
   lastTrade: number | null;
   watch: (symbols: string[]) => () => void;
@@ -27,6 +29,7 @@ const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,9}$/;
 
 export function LivePricesProvider({ children }: { children: React.ReactNode }) {
   const [prices, setPrices] = useState<Record<string, LivePrice>>({});
+  const [checked, setChecked] = useState<Record<string, true>>({});
   const [watched, setWatched] = useState<string[]>([]);
   const [socketOpen, setSocketOpen] = useState(false);
   const [lastTrade, setLastTrade] = useState<number | null>(null);
@@ -73,6 +76,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         );
         const quotes = results.flatMap((r) => r.quotes);
         if (cancelled) return;
+        setChecked((prev) => ({ ...prev, ...Object.fromEntries(watchedKey.split(",").map((s) => [s, true as const])) }));
         setPrices((prev) => {
           const next = { ...prev };
           for (const q of quotes) {
@@ -84,6 +88,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         });
       } catch (err) {
         console.warn("[prices] snapshot failed", err);
+        if (!cancelled) setChecked((prev) => ({ ...prev, ...Object.fromEntries(watchedKey.split(",").map((s) => [s, true as const])) }));
       }
     };
     load();
@@ -194,7 +199,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
     ? lastTrade === null && Object.keys(prices).length === 0 ? "connecting" : "offline"
     : lastTrade !== null && now - lastTrade < QUIET_AFTER ? "live" : "quiet";
 
-  const value = useMemo(() => ({ prices, status, lastTrade, watch }), [prices, status, lastTrade, watch]);
+  const value = useMemo(() => ({ prices, checked, status, lastTrade, watch }), [prices, checked, status, lastTrade, watch]);
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>;
 }
 
@@ -206,10 +211,10 @@ function useLiveCtx(): Ctx {
 
 /** Subscribe to live prices for these symbols while the component is mounted. */
 export function useLivePrices(symbols: string[]) {
-  const { prices, status, lastTrade, watch } = useLiveCtx();
+  const { prices, checked, status, lastTrade, watch } = useLiveCtx();
   const key = [...new Set(symbols)].sort().join(",");
   useEffect(() => (key ? watch(key.split(",")) : undefined), [key, watch]);
-  return { prices, status, lastTrade };
+  return { prices, checked, status, lastTrade };
 }
 
 export function useFeedStatus() {

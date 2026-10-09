@@ -1,13 +1,14 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ratings, TargetRange } from "@/components/AnalystPanel";
 import { useAssistant } from "@/components/Assistant";
 import { LineChart } from "@/components/charts/LineChart";
 import { ForecastPanel } from "@/components/ForecastPanel";
 import { HoldingForm } from "@/components/HoldingForm";
 import { useLivePrices } from "@/components/LivePrices";
+import { PageGate } from "@/components/PageGate";
 import { usePortfolios } from "@/components/Portfolios";
 import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
 import { useHistories } from "@/components/useHistory";
@@ -43,7 +44,9 @@ export default function StockPage() {
   const info = loaded?.symbol === symbol ? loaded.info : null;
   const error = loaded?.symbol === symbol ? loaded.error : null;
   const [range, setRange] = useState<Range>("1Y");
-  const { prices, lastTrade } = useLivePrices([symbol]);
+  const { prices, checked, lastTrade } = useLivePrices([symbol]);
+  const [forecastFor, setForecastFor] = useState<string | null>(null);
+  const onForecastSettled = useCallback(() => setForecastFor(symbol), [symbol]);
   // One 5-year fetch feeds every range, the performance strip and the forecast.
   const { data: hist, failed, loading: histLoading } = useHistories([symbol], "5y");
   const { ask } = useAssistant();
@@ -69,8 +72,14 @@ export default function StockPage() {
   const targetHistory = useMemo(() => (info?.targets.value?.history ?? []).map((p) => ({ t: p.t, v: p.target })), [info]);
   const stats = info?.stats.value;
   const name = stats?.name ?? info?.profile.value?.name ?? null;
-  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : null].filter(Boolean).join(" · ");
+  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : null].filter(Boolean).join(" · ");
   const rec = info?.recommendations.value?.[0];
+  const steps = [
+    { label: "Company details", done: info !== null },
+    { label: "Price history", done: all.length > 0 || failed.length > 0 },
+    { label: "Live price", done: price !== null || Boolean(checked[symbol]) },
+    { label: "Forecast", done: forecastFor === symbol },
+  ];
 
   if (error) {
     return (
@@ -82,7 +91,7 @@ export default function StockPage() {
   }
 
   return (
-    <div>
+    <PageGate key={symbol} title={symbol} steps={steps}>
       <div className="label">{meta || "stock"}</div>
       <div className="spread" style={{ marginTop: 8 }}>
         <div>
@@ -133,6 +142,7 @@ export default function StockPage() {
           exposures={price ? [{ symbol, value: price }] : []}
           runKey={`${symbol}:${price !== null}`}
           history={yearPoints}
+          onSettled={onForecastSettled}
           onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range, analyst targets and recent headlines, and name what would move it toward each case.`, { symbol })}
         />
       </section>
@@ -183,7 +193,7 @@ export default function StockPage() {
         <div className="spread"><h2 className="display">More on Yahoo Finance</h2></div>
         <YahooLinks symbol={symbol} />
       </section>
-    </div>
+    </PageGate>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { LineChart } from "@/components/charts/LineChart";
 import { ForecastPanel } from "@/components/ForecastPanel";
@@ -10,6 +10,7 @@ import { HoldingForm } from "@/components/HoldingForm";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { ImportCsv } from "@/components/ImportCsv";
 import { useLivePrices } from "@/components/LivePrices";
+import { PageGate } from "@/components/PageGate";
 import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
 import { useHistories } from "@/components/useHistory";
@@ -29,7 +30,9 @@ export default function PortfolioPage() {
   const { ask } = useAssistant();
   const portfolio = portfolios.find((p) => p.id === id);
   const symbols = useMemo(() => [...new Set(portfolio?.holdings.map((h) => h.symbol) ?? [])], [portfolio]);
-  const { prices } = useLivePrices(symbols);
+  const { prices, checked } = useLivePrices(symbols);
+  const [forecastFor, setForecastFor] = useState<string | null>(null);
+  const onForecastSettled = useCallback(() => setForecastFor(id), [id]);
   const [range, setRange] = useState<(typeof RANGES)[number]>("1y");
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -47,7 +50,15 @@ export default function PortfolioPage() {
   const exposures = positions.filter((p) => p.shares > 0 && p.marketValue).map((p) => ({ symbol: p.symbol, value: p.marketValue ?? 0 }));
   const runKey = positions.map((p) => `${p.symbol}:${p.shares}:${p.price !== null}`).join("|");
 
-  if (loading) return <div className="notice">Loading<span className="caret" aria-hidden="true" /></div>;
+  const noCharts = !portfolio || portfolio.kind === "watchlist" || held.length === 0;
+  const steps = [
+    { label: "Portfolio", done: !loading },
+    { label: "Live prices", done: !loading && symbols.every((s) => prices[s] || checked[s]) },
+    { label: "Price history", done: !loading && (noCharts || !historyLoading) },
+    { label: "Forecast", done: !loading && (noCharts || forecastFor === id) },
+  ];
+
+  if (loading) return <PageGate key={`loading-${id}`} title="portfolio" steps={steps}>{null}</PageGate>;
   if (!portfolio || !totals) {
     return (
       <div className="empty">
@@ -71,7 +82,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div>
+    <PageGate key={id} title={portfolio.name} steps={steps}>
       <div className="spread">
         <div>
           <div className="label">{portfolio.kind}{isPaper && portfolio.start_date ? ` · since ${portfolio.start_date}` : ""}</div>
@@ -165,11 +176,12 @@ export default function PortfolioPage() {
               exposures={exposures}
               runKey={runKey}
               history={yearSeries}
+              onSettled={onForecastSettled}
               onAskOutlook={() => ask(`Give a bull, base and bear outlook for the "${portfolio.name}" portfolio over the next 3 months, using the forecast range, analyst targets and recent news for its biggest positions.`, { portfolioId: portfolio.id })}
             />
           </section>
         </>
       )}
-    </div>
+    </PageGate>
   );
 }

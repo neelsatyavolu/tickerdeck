@@ -1,5 +1,5 @@
 import { fail, ok, withUser } from "@/lib/api";
-import { quotes } from "@/lib/market/finnhub";
+import { quotes } from "@/lib/market/sources";
 import { firstIssue, symbolListSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";

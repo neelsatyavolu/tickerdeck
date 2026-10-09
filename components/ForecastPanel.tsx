@@ -17,12 +17,14 @@ type Props = {
   runKey: string;
   history: SeriesPoint[];
   onAskOutlook?: () => void;
+  /** Called once the first forecast has resolved (or can't run), for page loaders. */
+  onSettled?: () => void;
 };
 
 const HORIZON_LABEL: Record<Horizon, string> = { "1w": "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", "1y": "1 year" };
 const HORIZON_KEYS = Object.keys(HORIZONS) as Horizon[];
 
-export function ForecastPanel({ exposures, runKey, history, onAskOutlook }: Props) {
+export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSettled }: Props) {
   const [horizon, setHorizon] = useState<Horizon>("3m");
   const [result, setResult] = useState<{ id: string; forecast: Forecast | null; error: string | null } | null>(null);
   const latest = useRef(exposures);
@@ -47,6 +49,10 @@ export function ForecastPanel({ exposures, runKey, history, onAskOutlook }: Prop
 
   // Keep the previous chart visible (dimmed) while a new horizon runs.
   const loading = result?.id !== id;
+  const settled = !ready || !loading;
+  useEffect(() => {
+    if (settled) onSettled?.();
+  }, [settled, onSettled]);
   const forecast = result?.forecast ?? null;
   const error = !loading ? result?.error ?? null : null;
 

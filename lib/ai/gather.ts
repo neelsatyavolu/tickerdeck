@@ -1,7 +1,7 @@
 import "server-only";
 import { forecastExposures } from "../forecast/service";
-import { news, profile, quote, quotes, recommendations } from "../market/finnhub";
-import { analystTargets } from "../market/sources";
+import { news, profile, recommendations } from "../market/finnhub";
+import { analystTargets, quote, quotes } from "../market/sources";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "../portfolio/math";
 import { listPortfolios } from "../portfolio/repo";
 import type { Quote } from "../portfolio/types";

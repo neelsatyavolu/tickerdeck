@@ -213,3 +213,11 @@ table.data tr.lot td { color: var(--fg-3); font-size: 13px; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
 .prose a { color: var(--accent); }
 .prose strong { font-weight: 600; }
+
+/* Page loader */
+.loader { max-width: 520px; margin: 72px 0 0; display: flex; flex-direction: column; gap: 16px; }
+.loader-track { height: 4px; background: var(--border); position: relative; overflow: hidden; }
+.loader-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width 250ms var(--ease); }
+.loader-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-2); }
+.loader-steps li { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 8px; }
+.loader-steps li[data-done="true"] { color: var(--fg-3); }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fail, ok, withUser } from "@/lib/api";
-import { search } from "@/lib/market/finnhub";
+import { search } from "@/lib/market/sources";
 import { firstIssue } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";

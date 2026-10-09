@@ -75,3 +75,27 @@ describe("parseSummary", () => {
     expect(s.dividendYield).toBeCloseTo(0.0032);
   });
 });
+
+import { latestQuote, parseLookup } from "./nasdaq";
+
+describe("latestQuote", () => {
+  it("uses the last two closes", () => {
+    expect(latestQuote("VTSAX", [{ t: 1, close: 185.53 }, { t: 2, close: 184.77 }])).toEqual({ symbol: "VTSAX", price: 184.77, prevClose: 185.53, time: 2 });
+    expect(latestQuote("X", [{ t: 1, close: 1 }])).toBeNull();
+  });
+});
+
+describe("parseLookup", () => {
+  it("keeps stocks, ETFs and mutual funds with readable types", () => {
+    expect(
+      parseLookup([
+        { symbol: "VTSAX", name: "Vanguard Total Stock Market Index Fund Admiral Shares", asset: "MUTUALFUNDS" },
+        { symbol: "AAPL", name: "Apple Inc. Common Stock", asset: "STOCKS" },
+        { symbol: "ES=F", name: "E-mini", asset: "FUTURES" },
+      ]),
+    ).toEqual([
+      { symbol: "VTSAX", name: "Vanguard Total Stock Market Index Fund Admiral Shares", type: "Mutual fund" },
+      { symbol: "AAPL", name: "Apple Inc.", type: "Stock" },
+    ]);
+  });
+});

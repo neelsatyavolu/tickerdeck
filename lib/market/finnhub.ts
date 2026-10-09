@@ -97,8 +97,9 @@ type RawSearch = { result?: { symbol: string; description: string; type: string 
 export function search(query: string): Promise<SymbolMatch[]> {
   return memo(`fh:search:${query.toLowerCase()}`, SLOW_TTL, async () => {
     const r = await get<RawSearch>("search", { q: query, exchange: "US" });
+    const seen = new Set<string>();
     return (r.result ?? [])
-      .filter((m) => /^[A-Z][A-Z0-9.-]{0,9}$/.test(m.symbol))
+      .filter((m) => /^[A-Z][A-Z0-9.-]{0,9}$/.test(m.symbol) && !seen.has(m.symbol) && Boolean(seen.add(m.symbol)))
       .slice(0, 8)
       .map((m) => ({ symbol: m.symbol, name: m.description, type: m.type }));
   });

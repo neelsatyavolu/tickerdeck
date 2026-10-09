@@ -1,7 +1,7 @@
 import "server-only";
 import { memo } from "./cache";
 import { fetchJson, UpstreamError } from "./http";
-import type { AnalystTargets, HistoryRange, PricePoint, TargetPoint } from "./types";
+import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
 // Nasdaq's public quote API (the one nasdaq.com uses). Unofficial like Yahoo's,
 // but it answers requests from cloud hosts, which Yahoo rate-limits to 429.
@@ -15,7 +15,8 @@ const HISTORY_TTL = 60 * 60_000;
 const SLOW_TTL = 6 * 60 * 60_000;
 const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827 };
 
-export type AssetClass = "stocks" | "etf";
+export type AssetClass = "stocks" | "etf" | "mutualfunds";
+const ASSET_CLASSES: AssetClass[] = ["stocks", "etf", "mutualfunds"];
 type Envelope<T> = { data: T | null; status?: { rCode?: number } };
 
 /** "$1,234.50" / "777.22" / "N/A" → number | null */
@@ -74,10 +75,10 @@ function get<T>(path: string): Promise<Envelope<T>> {
   return fetchJson<Envelope<T>>("nasdaq", `${BASE}${path}`, { headers: HEADERS, timeoutMs: 10_000 });
 }
 
-/** Nasdaq files ETFs separately from stocks; find which one this symbol is. */
+/** Nasdaq files stocks, ETFs and mutual funds separately; find which one this symbol is. */
 export function assetClass(symbol: string): Promise<AssetClass | null> {
   return memo(`nq:class:${symbol}`, SLOW_TTL, async () => {
-    for (const cls of ["stocks", "etf"] as const) {
+    for (const cls of ASSET_CLASSES) {
       const r = await get<{ companyName?: string }>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`);
       if (r.data?.companyName) return cls;
     }
@@ -143,4 +144,32 @@ export function summary(symbol: string): Promise<NasdaqSummary | null> {
     const [info, sum] = await Promise.all([get<RawInfo>(`/quote/${enc}/info?assetclass=${cls}`), get<RawSummary>(`/quote/${enc}/summary?assetclass=${cls}`)]);
     return parseSummary(info.data, sum.data, cls);
   });
+}
+
+/** Latest close and the one before it. Mutual funds price once a day, so this is their quote. */
+export function latestQuote(symbol: string, points: PricePoint[]): QuoteSnapshot | null {
+  if (points.length < 2) return null;
+  const last = points[points.length - 1];
+  return { symbol, price: last.close, prevClose: points[points.length - 2].close, time: last.t };
+}
+
+/** Quote from recent daily closes, for symbols Finnhub's free plan won't price (mutual funds). */
+export function quote(symbol: string): Promise<QuoteSnapshot | null> {
+  return memo(`nq:quote:${symbol}`, 5 * 60_000, async () => latestQuote(symbol, await history(symbol, "1mo")));
+}
+
+type RawLookup = { symbol: string; name: string; asset?: string }[];
+
+const ASSET_LABEL: Record<string, string> = { STOCKS: "Stock", ETF: "ETF", MUTUALFUNDS: "Mutual fund" };
+
+export function parseLookup(rows: RawLookup | null): SymbolMatch[] {
+  return (rows ?? [])
+    .filter((r) => r.asset && r.asset in ASSET_LABEL && /^[A-Z][A-Z0-9.-]{0,9}$/.test(r.symbol))
+    .map((r) => ({ symbol: r.symbol, name: r.name.replace(/ (Common Stock|Common Shares|Ordinary Shares)$/i, ""), type: ASSET_LABEL[r.asset as string] }));
+}
+
+export function search(query: string): Promise<SymbolMatch[]> {
+  return memo(`nq:search:${query.toLowerCase()}`, SLOW_TTL, async () =>
+    parseLookup((await get<RawLookup>(`/autocomplete/slookup/10?search=${encodeURIComponent(query)}`)).data),
+  );
 }

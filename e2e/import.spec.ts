@@ -18,20 +18,27 @@ test("import a Yahoo Finance CSV into a new portfolio", async ({ page }) => {
 
   await page.getByRole("button", { name: "Import CSV" }).first().click();
   await page.getByLabel("CSV file").setInputFiles(fixture);
-  await expect(page.getByText(/5 lots across 4 symbols/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/6 lots across 5 symbols/)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Yahoo Finance export/)).toBeVisible();
   await expect(page.getByText(/2 skipped/)).toBeVisible();
   await expect(page.getByLabel("New portfolio name")).toHaveValue("yahoo-quotes");
   await page.getByLabel("New portfolio name").fill("E2E Yahoo Import");
-  await page.getByRole("button", { name: "Import 5 lots" }).click();
+  await page.getByRole("button", { name: "Import 6 lots" }).click();
 
   await expect(page.getByRole("heading", { name: "E2E Yahoo Import" })).toBeVisible();
-  for (const sym of ["AAPL", "BRK.B", "SPY", "NVDA"]) {
+  for (const sym of ["AAPL", "BRK.B", "SPY", "VTSAX", "NVDA"]) {
     await expect(page.getByRole("row", { name: new RegExp(`^Show ${sym.replace(".", "\\.")} lots`) })).toBeVisible();
   }
   // Two AAPL lots merge into one 12.5-share position at a blended cost.
   await expect(page.getByRole("row", { name: /AAPL/ }).first()).toContainText("12.5");
   await expect(page.getByRole("row", { name: /AAPL/ }).first()).toContainText("$220.00");
+
+  // Mutual funds get a daily price and a detail page.
+  await page.getByRole("link", { name: "VTSAX", exact: true }).click();
+  await expect(page.getByText(/Mutual fund/)).toBeVisible();
+  await expect(page.getByRole("img", { name: /VTSAX price/ })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "E2E Yahoo Import" })).toBeVisible();
 
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Delete", exact: true }).first().click();

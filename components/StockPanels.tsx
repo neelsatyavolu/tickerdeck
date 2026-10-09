@@ -45,7 +45,8 @@ function RangeBar({ low, high, price }: { low: number | null; high: number | nul
 }
 
 export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number | null }) {
-  const isEtf = stats.assetClass === "etf";
+  // Funds have no company financials; hide the cells that would all be blank.
+  const isFund = stats.assetClass === "etf" || stats.assetClass === "mutualfunds";
   const cells: [string, React.ReactNode][] = [
     ["Market cap", big(stats.marketCap)],
     ["P/E (TTM)", num(stats.peTTM, 1)],
@@ -67,8 +68,7 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
     ["EPS growth (YoY)", <span key="eg" className={tone(stats.epsGrowthYoy)}>{pct(stats.epsGrowthYoy, 1)}</span>],
     ["YTD vs S&P 500", <span key="rel" className={tone(stats.relativeToSP500Ytd)}>{pct(stats.relativeToSP500Ytd, 1)}</span>],
   ];
-  // ETFs have no company financials; hide the cells that would all be blank.
-  const shown = isEtf ? cells.filter(([, v]) => v !== "—") : cells;
+  const shown = isFund ? cells.filter(([, v]) => v !== "—") : cells;
   return (
     <div className="grid-cells cols-4">
       <div style={{ gridColumn: "span 2" }}>

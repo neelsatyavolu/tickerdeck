@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useLivePrices } from "@/components/LivePrices";
 import { ImportCsv } from "@/components/ImportCsv";
+import { PageGate } from "@/components/PageGate";
 import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
 import { Change, ErrorText, Tile } from "@/components/ui";
@@ -14,7 +15,8 @@ import { pct, signedUsd, tone, usd } from "@/lib/format";
 
 export default function Dashboard() {
   const { portfolios, loading, error, mutate } = usePortfolios();
-  const { prices } = useLivePrices(uniqueSymbols(portfolios));
+  const allSymbols = uniqueSymbols(portfolios);
+  const { prices, checked } = useLivePrices(allSymbols);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const router = useRouter();
@@ -35,10 +37,13 @@ export default function Dashboard() {
   const gain = money.reduce((s, r) => s + r.totals.totalGain, 0);
   const basis = money.reduce((s, r) => s + (r.p.kind === "paper" && r.p.starting_cash ? r.p.starting_cash : r.totals.cost), 0);
 
-  if (loading) return <div className="notice">Loading portfolios<span className="caret" aria-hidden="true" /></div>;
+  const steps = [
+    { label: "Portfolios", done: !loading },
+    { label: "Live prices", done: !loading && allSymbols.every((s) => prices[s] || checked[s]) },
+  ];
 
   return (
-    <div>
+    <PageGate title="portfolios" steps={steps}>
       <div className="label">All portfolios</div>
       <div className="hero-value" style={{ marginTop: 8 }}>{usd(value)}</div>
       <div className="row" style={{ marginTop: 8 }}>
@@ -115,6 +120,6 @@ export default function Dashboard() {
           </div>
         )}
       </section>
-    </div>
+    </PageGate>
   );
 }
