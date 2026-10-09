@@ -25,7 +25,7 @@ describe("streamChat", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const out = await collectText(streamChat({ provider: "codex", tokens, model: "gpt-6-astra", system: "sys", messages: [{ role: "user", content: "hi" }] }));
-    expect(out).toEqual({ text: "Hello", error: null });
+    expect(out).toEqual({ text: "Hello", error: null, tier: null });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain("chatgpt.com/backend-api/codex/responses");
     expect(init.headers["chatgpt-account-id"]).toBe("acct");
@@ -48,6 +48,37 @@ describe("streamChat", () => {
     expect(out.error).toMatch(/Reconnect/);
   });
 
+  it("sends the chosen effort and Fast mode to ChatGPT, and reports the tier used", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse(['data: {"type":"response.output_text.delta","delta":"ok"}\n\n', 'data: {"type":"response.completed","response":{"service_tier":"priority"}}\n\n']),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const out = await collectText(streamChat({ provider: "codex", tokens, model: "gpt-6-astra", system: "", messages: [{ role: "user", content: "x" }], effort: "high", fast: true }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ reasoning: { effort: "high" }, service_tier: "priority" });
+    expect(out).toMatchObject({ text: "ok", tier: "priority" });
+  });
+
+  it("retries without Fast mode when the backend rejects it", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "Unsupported service_tier: priority" } }), { status: 400 }))
+      .mockResolvedValueOnce(sseResponse(['data: {"type":"response.output_text.delta","delta":"fine"}\n\n']));
+    vi.stubGlobal("fetch", fetchMock);
+    const out = await collectText(streamChat({ provider: "codex", tokens, model: "m", system: "", messages: [{ role: "user", content: "x" }], fast: true }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).service_tier).toBeUndefined();
+    expect(out).toMatchObject({ text: "fine", tier: "default", error: null });
+  });
+
+  it("clamps Grok's effort to what it supports and never sends Fast mode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse(["data: [DONE]\n"]));
+    vi.stubGlobal("fetch", fetchMock);
+    await collectText(streamChat({ provider: "grok", tokens, model: "grok-4.7", system: "", messages: [{ role: "user", content: "x" }], effort: "xhigh", fast: true }));
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.reasoning).toEqual({ effort: "high" });
+    expect(body.service_tier).toBeUndefined();
+  });
+
   it("aborts the upstream request when the client cancels", async () => {
     let upstreamSignal: AbortSignal | undefined;
     vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, init: RequestInit) => {
@@ -65,6 +96,6 @@ describe("streamChat", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
     vi.spyOn(console, "error").mockImplementation(() => {});
     const out = await collectText(streamChat({ provider: "codex", tokens, model: "m", system: "", messages: [{ role: "user", content: "x" }] }));
-    expect(out).toEqual({ text: "", error: "Could not reach the model." });
+    expect(out).toEqual({ text: "", error: "Could not reach the model.", tier: null });
   });
 });

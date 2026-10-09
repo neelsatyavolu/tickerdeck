@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
+import { AssistantDefaults } from "@/components/AssistantDefaults";
 import { ErrorText } from "@/components/ui";
 import { authClient } from "@/lib/auth/client";
 
@@ -149,6 +150,11 @@ export default function SettingsPage() {
             <Connection key={p} provider={p} connected={Boolean(status?.[p])} onChange={refreshStatus} />
           ))}
         </div>
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">Assistant defaults</h2></div>
+        <AssistantDefaults connected={status} />
       </section>
 
       <section className="section">

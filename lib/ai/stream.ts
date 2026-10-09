@@ -1,9 +1,11 @@
 import "server-only";
+import { effortFor, type Effort } from "./options";
 import { chatEvent, codexEvent, createSseSplitter, type TextEvent } from "./sse";
 import type { Provider, Tokens } from "./providers";
 
 // Streams a completion from the user's own subscription as NDJSON lines:
-// {"t":"text chunk"} … then {"done":true} or {"e":"error message"}.
+// {"t":"text chunk"} … then {"done":true} or {"e":"error message"}, plus
+// {"tier":"priority"|"default"} for ChatGPT so the UI knows whether Fast mode applied.
 
 const CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 const GROK_CHAT_URL = "https://api.x.ai/v1/chat/completions";
@@ -11,9 +13,21 @@ const IDLE_TIMEOUT_MS = 90_000;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-type StreamParams = { provider: Provider; tokens: Tokens; model: string; system: string; messages: ChatMessage[] };
+type StreamParams = {
+  provider: Provider;
+  tokens: Tokens;
+  model: string;
+  system: string;
+  messages: ChatMessage[];
+  effort?: Effort;
+  /** ChatGPT Fast mode: priority processing (uses more of the plan's credits). */
+  fast?: boolean;
+};
 
-function codexRequest({ tokens, model, system, messages }: StreamParams): [string, RequestInit] {
+/** What a single attempt sends; the retry loop drops options the backend rejects. */
+type Attempt = { effort: Effort | null; fast: boolean };
+
+function codexRequest({ tokens, model, system, messages }: StreamParams, attempt: Attempt): [string, RequestInit] {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${tokens.accessToken}`,
     "Content-Type": "application/json",
@@ -29,19 +43,23 @@ function codexRequest({ tokens, model, system, messages }: StreamParams): [strin
       role: m.role,
       content: [{ type: m.role === "assistant" ? "output_text" : "input_text", text: m.content }],
     })),
-    reasoning: { effort: "low" },
+    ...(attempt.effort ? { reasoning: { effort: attempt.effort } } : {}),
+    // The ChatGPT backend takes "priority" for Fast mode (it rejects the literal "fast").
+    ...(attempt.fast ? { service_tier: "priority" } : {}),
     store: false,
     stream: true,
   };
   return [CODEX_RESPONSES_URL, { method: "POST", headers, body: JSON.stringify(body) }];
 }
 
-function grokRequest({ tokens, model, system, messages }: StreamParams): [string, RequestInit] {
+function grokRequest({ tokens, model, system, messages }: StreamParams, attempt: Attempt): [string, RequestInit] {
   const body = {
     model,
     messages: [{ role: "system", content: system }, ...messages],
     temperature: 0.4,
     stream: true,
+    // Grok 4.x reasoning models take an effort; others ignore or reject it.
+    ...(attempt.effort && /^grok-4/.test(model) ? { reasoning: { effort: attempt.effort } } : {}),
   };
   return [
     GROK_CHAT_URL,
@@ -58,8 +76,7 @@ function grokRequest({ tokens, model, system, messages }: StreamParams): [string
   ];
 }
 
-async function upstreamError(res: Response): Promise<string> {
-  const text = await res.text().catch(() => "");
+function upstreamError(res: Response, text: string): string {
   try {
     const json = JSON.parse(text);
     const message = json?.error?.message ?? json?.detail ?? json?.message;
@@ -75,7 +92,7 @@ async function upstreamError(res: Response): Promise<string> {
 export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const parse = params.provider === "codex" ? codexEvent : chatEvent;
-  const [url, init] = params.provider === "codex" ? codexRequest(params) : grokRequest(params);
+  const build = (a: Attempt) => (params.provider === "codex" ? codexRequest(params, a) : grokRequest(params, a));
   const upstream = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let closed = false;
@@ -104,6 +121,7 @@ export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
       const handle = (event: TextEvent | null) => {
         if (!event || finished) return;
         if (event.text) send({ t: event.text });
+        if (event.tier) send({ tier: event.tier });
         if (event.error) {
           finished = true;
           send({ e: event.error });
@@ -115,9 +133,28 @@ export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
 
       armIdle();
       try {
-        const res = await fetch(url, { ...init, signal: upstream.signal });
-        if (!res.ok || !res.body) {
-          handle({ error: await upstreamError(res) });
+        // Try with everything the user asked for; if the backend rejects Fast mode
+        // or the effort level for this model/plan, drop that option and retry once.
+        let attempt: Attempt = { effort: effortFor(params.provider, params.effort), fast: params.provider === "codex" && Boolean(params.fast) };
+        let res: Response | null = null;
+        let failure: string | null = null;
+        for (let tries = 0; tries < 3; tries++) {
+          const [url, init] = build(attempt);
+          res = await fetch(url, { ...init, signal: upstream.signal });
+          if (res.ok && res.body) break;
+          const text = await res.text().catch(() => "");
+          failure = upstreamError(res, text);
+          if (res.status !== 400) break;
+          if (attempt.fast && /service.?tier|priority|fast/i.test(text)) {
+            attempt = { ...attempt, fast: false };
+            send({ tier: "default" });
+          } else if (attempt.effort && /effort|reasoning/i.test(text)) {
+            attempt = { ...attempt, effort: null };
+          } else break;
+          res = null;
+        }
+        if (!res || !res.ok || !res.body) {
+          handle({ error: failure ?? "The model request failed." });
         } else {
           const splitter = createSseSplitter((data) => handle(parse(data)));
           const decoder = new TextDecoder();
@@ -155,15 +192,17 @@ export function streamChat(params: StreamParams): ReadableStream<Uint8Array> {
 }
 
 /** Collects a stream into one string (used by tests and non-streaming callers). */
-export async function collectText(stream: ReadableStream<Uint8Array>): Promise<{ text: string; error: string | null }> {
+export async function collectText(stream: ReadableStream<Uint8Array>): Promise<{ text: string; error: string | null; tier: string | null }> {
   const raw = await new Response(stream).text();
   let text = "";
   let error: string | null = null;
+  let tier: string | null = null;
   for (const line of raw.split("\n")) {
     if (!line) continue;
-    const msg = JSON.parse(line) as { t?: string; e?: string };
+    const msg = JSON.parse(line) as { t?: string; e?: string; tier?: string };
     if (msg.t) text += msg.t;
     if (msg.e) error = msg.e;
+    if (msg.tier) tier = msg.tier;
   }
-  return { text, error };
+  return { text, error, tier };
 }

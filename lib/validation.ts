@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PORTFOLIO_KINDS } from "./portfolio/types";
 import { HORIZONS } from "./forecast/montecarlo";
 import { isIndex } from "./market/indexes";
+import { EFFORTS } from "./ai/options";
 
 /** Something you can own: a US stock, ETF or mutual fund. */
 export const tickerSchema = z
@@ -61,6 +62,9 @@ export const chatRequestSchema = z.object({
   provider: z.enum(["codex", "grok"]),
   model: z.string().max(80).optional(),
   messages: z.array(chatMessageSchema).min(1).max(40),
+  effort: z.enum(EFFORTS).optional(),
+  /** ChatGPT Fast mode (priority processing); ignored for Grok. */
+  fast: z.boolean().optional(),
   /** Page the user is looking at, so the assistant can focus on it. */
   focus: z
     .object({ portfolioId: z.uuid().optional(), symbol: symbolSchema.optional(), dashboardId: z.uuid().optional() })

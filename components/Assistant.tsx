@@ -6,16 +6,16 @@ import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ProposalCard } from "./dashboard/ProposalCard";
+import { EFFORT_LABEL } from "@/lib/ai/options";
+import { effortOf, updateAiPrefs, useAiPrefs, type Provider } from "@/lib/client/aiPrefs";
 import { DASHBOARD_FENCE, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
-type Provider = "codex" | "grok";
 type Msg = { role: "user" | "assistant"; content: string };
 type Focus = { portfolioId?: string; symbol?: string; dashboardId?: string };
 type Status = Record<Provider, boolean>;
 type Models = Record<Provider, { id: string; label: string }[]>;
 
 const PROVIDER_LABEL: Record<Provider, string> = { codex: "ChatGPT", grok: "Grok" };
-const PREF_KEY = "tickerdeck.ai";
 
 type Ctx = {
   open: boolean;
@@ -43,21 +43,6 @@ function focusFromPath(path: string): Focus {
   return {};
 }
 
-function readPrefs(): { provider?: Provider; model?: Partial<Record<Provider, string>> } {
-  try {
-    return JSON.parse(localStorage.getItem(PREF_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-function writePrefs(v: { provider: Provider; model: Partial<Record<Provider, string>> }) {
-  try {
-    localStorage.setItem(PREF_KEY, JSON.stringify(v));
-  } catch {
-    /* storage unavailable */
-  }
-}
 
 async function loadStatus(): Promise<{ status: Status; models: Models | null }> {
   try {
@@ -103,7 +88,7 @@ function Markdown({ text }: { text: string }) {
 }
 
 /** Reads the NDJSON stream from /api/ai/chat, calling onText for each chunk. */
-async function streamAnswer(body: object, onText: (t: string) => void, signal: AbortSignal): Promise<void> {
+async function streamAnswer(body: object, onText: (t: string) => void, signal: AbortSignal, onTier?: (tier: string) => void): Promise<void> {
   const res = await fetch("/api/ai/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -126,8 +111,9 @@ async function streamAnswer(body: object, onText: (t: string) => void, signal: A
       const line = buffer.slice(0, nl);
       buffer = buffer.slice(nl + 1);
       if (!line) continue;
-      const msg = JSON.parse(line) as { t?: string; e?: string };
+      const msg = JSON.parse(line) as { t?: string; e?: string; tier?: string };
       if (msg.t) onText(msg.t);
+      if (msg.tier) onTier?.(msg.tier);
       if (msg.e) throw new Error(msg.e);
     }
   }
@@ -140,8 +126,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [models, setModels] = useState<Models | null>(null);
-  const [provider, setProvider] = useState<Provider>("codex");
-  const [modelPref, setModelPref] = useState<Partial<Record<Provider, string>>>({});
+  const prefs = useAiPrefs();
+  const modelPref = prefs.model;
   const abort = useRef<AbortController | null>(null);
   const pathname = usePathname();
 
@@ -149,10 +135,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     const s = loaded.status;
     setStatus(s);
     setModels(loaded.models);
-    const prefs = readPrefs();
-    setProvider(prefs.provider && s[prefs.provider] ? prefs.provider : s.codex ? "codex" : s.grok ? "grok" : prefs.provider ?? "codex");
-    setModelPref(prefs.model ?? {});
   }, []);
+
+  // The provider to use: the saved default if it's connected, else whichever is.
+  const provider: Provider =
+    prefs.provider && status?.[prefs.provider] ? prefs.provider : status?.codex ? "codex" : status?.grok ? "grok" : prefs.provider ?? "codex";
+  const effort = effortOf(prefs, provider);
+  const fast = provider === "codex" && prefs.fast;
+  const [lastTier, setLastTier] = useState<string | null>(null);
 
   const refreshStatus = useCallback(async () => applyStatus(await loadStatus()), [applyStatus]);
 
@@ -172,9 +162,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setBusy(true);
       setError(null);
       setMessages([...history, { role: "assistant", content: "" }]);
+      setLastTier(null);
       try {
         await streamAnswer(
-          { provider, model: modelPref[provider], messages: history, focus },
+          { provider, model: modelPref[provider], messages: history, focus, effort, fast },
           (t) =>
             setMessages((prev) => {
               const next = prev.slice();
@@ -183,6 +174,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               return next;
             }),
           ctrl.signal,
+          setLastTier,
         );
       } catch (err) {
         // Drop an empty assistant turn so it isn't shown or sent upstream next time.
@@ -193,7 +185,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         if (abort.current === ctrl) setBusy(false);
       }
     },
-    [provider, modelPref],
+    [provider, modelPref, effort, fast],
   );
 
   const ask = useCallback(
@@ -215,10 +207,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const chooseModelKey = (key: string) => {
     const [p, id] = key.split(":") as [Provider, string];
-    const next = { ...modelPref, [p]: id || undefined };
-    setProvider(p);
-    setModelPref(next);
-    writePrefs({ provider: p, model: next });
+    updateAiPrefs((prev) => ({ ...prev, provider: p, model: { ...prev.model, [p]: id || undefined } }));
   };
 
   const value = useMemo(() => ({ open, setOpen, ask, status, refreshStatus }), [open, ask, status, refreshStatus]);
@@ -242,7 +231,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     const el = body.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [messages, error, busy]);
-  const modelLabel = models?.[provider]?.find((m) => m.id === modelPref[provider])?.label ?? `${PROVIDER_LABEL[provider]} default`;
+  const modelLabel = [
+    models?.[provider]?.find((m) => m.id === modelPref[provider])?.label ?? `${PROVIDER_LABEL[provider]} default`,
+    EFFORT_LABEL[effort].toLowerCase(),
+    fast ? "fast" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // Fast mode was asked for but the backend answered at standard speed.
+  const fastDeclined = fast && !busy && lastTier !== null && lastTier !== "priority";
   const suggestions = [
     focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "How are my portfolios doing today, and what's driving it?",
     focus.dashboardId ? "Add panels comparing my holdings with the S&P 500 and today's movers." : "Which position is most concentrated or riskiest?",
@@ -318,6 +315,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 </div>
               ),
             )
+          )}
+          {fastDeclined && messages.length > 0 && (
+            <div className="notice">Fast mode wasn&apos;t available for this answer; it ran at standard speed.</div>
           )}
           {error && (
             <div className="error" role="alert">

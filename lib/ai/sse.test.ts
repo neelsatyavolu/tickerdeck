@@ -17,6 +17,7 @@ describe("codexEvent", () => {
   it("emits text deltas, completion and errors", () => {
     expect(codexEvent('{"type":"response.output_text.delta","delta":"Hi"}')).toEqual({ text: "Hi" });
     expect(codexEvent('{"type":"response.completed","response":{}}')).toEqual({ done: true });
+    expect(codexEvent('{"type":"response.completed","response":{"service_tier":"priority"}}')).toEqual({ done: true, tier: "priority" });
     expect(codexEvent('{"type":"response.failed","response":{"error":{"message":"quota"}}}')).toEqual({ error: "quota" });
     expect(codexEvent('{"type":"error","message":"bad model"}')).toEqual({ error: "bad model" });
   });

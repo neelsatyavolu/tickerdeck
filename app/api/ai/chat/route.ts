@@ -17,7 +17,7 @@ export function POST(req: Request) {
   return withUser(async ({ user }) => {
     const parsed = chatRequestSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
-    const { provider, model, messages, focus } = parsed.data;
+    const { provider, model, messages, focus, effort, fast } = parsed.data;
 
     const tokens = await getActiveSession(provider, user.id);
     if (!tokens) return fail(`Connect ${PROVIDERS[provider].label} in Settings first.`, 409);
@@ -37,6 +37,8 @@ export function POST(req: Request) {
       model: await resolveModel(provider, model, PROVIDERS[provider].defaultModel),
       system: buildSystemPrompt(context),
       messages,
+      effort,
+      fast: provider === "codex" && fast,
     });
     return new Response(stream, {
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },

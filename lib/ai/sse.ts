@@ -1,7 +1,7 @@
 // Incremental Server-Sent Events parsing for the two upstream formats:
 // ChatGPT's Codex "responses" stream and OpenAI-style chat completion chunks (Grok).
 
-export type TextEvent = { text?: string; error?: string; done?: boolean };
+export type TextEvent = { text?: string; error?: string; done?: boolean; tier?: string };
 
 /** Splits a byte stream into SSE `data:` payloads, tolerating chunk boundaries anywhere. */
 export function createSseSplitter(onData: (data: string) => void) {
@@ -27,7 +27,7 @@ type CodexEvent = {
   type?: string;
   delta?: unknown;
   error?: { message?: string };
-  response?: { error?: { message?: string } | null };
+  response?: { error?: { message?: string } | null; service_tier?: string };
   message?: string;
 };
 
@@ -40,7 +40,7 @@ export function codexEvent(data: string): TextEvent | null {
     return null;
   }
   if (e.type === "response.output_text.delta" && typeof e.delta === "string") return { text: e.delta };
-  if (e.type === "response.completed") return { done: true };
+  if (e.type === "response.completed") return typeof e.response?.service_tier === "string" ? { done: true, tier: e.response.service_tier } : { done: true };
   const error = e.error?.message ?? e.response?.error?.message ?? (e.type === "error" ? e.message : undefined);
   if (error || e.type === "response.failed") return { error: error ?? "The model request failed." };
   return null;
