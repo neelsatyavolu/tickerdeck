@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@neelsatyavolu/shared-ai-auth':
-        specifier: github:neelsatyavolu/shared-ai-auth#31ac039
-        version: https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac039
+        specifier: github:neelsatyavolu/shared-ai-auth#31ac03997710d12a8fcc13def4004132ceb2864d
+        version: https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac03997710d12a8fcc13def4004132ceb2864d
       '@neondatabase/auth':
         specifier: 0.5.0-beta
         version: 0.5.0-beta(08efd5ae0b272f9111d04f9114c657eb)
@@ -678,8 +678,8 @@ packages:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
-  '@neelsatyavolu/shared-ai-auth@https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac039':
-    resolution: {tarball: https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac039}
+  '@neelsatyavolu/shared-ai-auth@https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac03997710d12a8fcc13def4004132ceb2864d':
+    resolution: {tarball: https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac03997710d12a8fcc13def4004132ceb2864d}
     version: 0.1.3
     engines: {node: '>=18'}
 
@@ -4482,7 +4482,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@neelsatyavolu/shared-ai-auth@https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac039': {}
+  '@neelsatyavolu/shared-ai-auth@https://codeload.github.com/neelsatyavolu/shared-ai-auth/tar.gz/31ac03997710d12a8fcc13def4004132ceb2864d': {}
 
   '@neondatabase/auth-ui@0.3.0-beta(190a005d7f08797e0ee595edf27cefb0)':
     dependencies:

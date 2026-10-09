@@ -5,6 +5,7 @@ import { UpstreamError } from "./market/http";
 import { ZodError } from "zod";
 import { firstIssue } from "./validation";
 import { UserFacingError } from "./errors";
+import { type Bucket, enforceLimit } from "./rateLimit";
 
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -19,8 +20,8 @@ export function fail(error: string, status: number) {
 
 type Authed = { user: SessionUser };
 
-/** Run a handler for a signed-in user; map known errors to clean responses. */
-export async function withUser(handler: (ctx: Authed) => Promise<Response>): Promise<Response> {
+/** Run a handler for a signed-in user (optionally rate-limited); map known errors to clean responses. */
+export async function withUser(handler: (ctx: Authed) => Promise<Response>, limit?: Bucket): Promise<Response> {
   let user: SessionUser | null;
   try {
     user = await currentUser();
@@ -30,6 +31,7 @@ export async function withUser(handler: (ctx: Authed) => Promise<Response>): Pro
   }
   if (!user) return fail("Sign in first.", 401);
   try {
+    if (limit) await enforceLimit(user.id, limit);
     return await handler({ user });
   } catch (err) {
     if (err instanceof UpstreamError) {

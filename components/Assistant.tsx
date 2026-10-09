@@ -58,10 +58,30 @@ async function loadStatus(): Promise<{ status: Status; models: Models | null }> 
 
 // Images are dropped: model output can echo text from third-party headlines, and
 // an image URL would load automatically and could carry data off the page.
+// Links: only http(s) or in-app paths, and external ones show their real host
+// so text echoed from a headline can't disguise where a link goes.
+function safeLink(href: string | undefined): { href: string; host: string | null } | null {
+  if (!href) return null;
+  if (href.startsWith("/") && !href.startsWith("//")) return { href, host: null };
+  try {
+    const url = new URL(href);
+    return url.protocol === "https:" || url.protocol === "http:" ? { href: url.href, host: url.hostname.replace(/^www\./, "") } : null;
+  } catch {
+    return null;
+  }
+}
+
 const MD_COMPONENTS = {
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
-  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+    const link = safeLink(href);
+    if (!link) return <>{children}</>;
+    if (!link.host) return <a href={link.href}>{children}</a>;
+    return (
+      <a href={link.href} target="_blank" rel="noopener noreferrer nofollow">
+        {children} <span className="faint mono" style={{ fontSize: 11 }}>({link.host})</span>
+      </a>
+    );
+  },
 };
 
 /** An assistant reply: prose, plus any proposed dashboard panels as action cards. */

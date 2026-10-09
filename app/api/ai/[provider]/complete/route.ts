@@ -35,5 +35,5 @@ export function POST(req: Request, { params }: { params: Promise<{ provider: str
       console.error(`[ai] ${provider} token exchange failed:`, err instanceof Error ? err.message : err);
       return fail("Sign-in failed. The code may have expired. Click Connect again.", 502);
     }
-  });
+  }, "sensitive");
 }

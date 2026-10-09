@@ -3,6 +3,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import { Pool } from "@neondatabase/serverless";
 
+// Preview builds must never change the production schema.
+if (process.env.VERCEL_ENV === "preview" && !process.env.ALLOW_PREVIEW_MIGRATIONS) {
+  console.log("skipping migrations on a preview deployment");
+  process.exit(0);
+}
+
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is not set");

@@ -13,6 +13,7 @@ import { usePortfolios } from "@/components/Portfolios";
 import { WatchButton } from "@/components/Watchlist";
 import { AddToDashboard } from "@/components/dashboard/AddToDashboard";
 import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
+import { useExtended } from "@/components/useExtended";
 import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
 import { cachedApi } from "@/lib/client/api";
@@ -64,6 +65,7 @@ export default function StockPage() {
   }, [symbol]);
 
   const live = prices[symbol];
+  const ext = useExtended([symbol], prices)[symbol];
   const price = live?.price ?? info?.quote.value?.price ?? null;
   const prevClose = live?.prevClose ?? info?.quote.value?.prevClose ?? null;
   const change = price !== null && prevClose ? price - prevClose : null;
@@ -106,8 +108,16 @@ export default function StockPage() {
           <div className="hero-value" style={{ fontSize: 40 }}>{priceOf(symbol, price)}</div>
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
             <Change amount={change} percent={change !== null && prevClose ? change / prevClose : null} money={!isIndexPage} />
-            <span className="faint mono" style={{ fontSize: 12 }}>{live?.fromTrade && lastTrade ? `trade ${timeAgo(live.time)}` : "today"}</span>
+            <span className="faint mono" style={{ fontSize: 12 }}>{live?.fromTrade && lastTrade ? `trade ${timeAgo(live.time)}` : ext ? "at close" : "today"}</span>
           </div>
+          {ext && (
+            <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }} aria-label={ext.session === "pre" ? "Pre-market" : "After hours"}>
+              <span className="label">{ext.session === "pre" ? "Pre-market" : "After hours"}</span>
+              <span className="num">{priceOf(symbol, ext.price)}</span>
+              <Change amount={ext.change} percent={ext.changePct} />
+              {ext.asOf && <span className="faint mono" style={{ fontSize: 12 }}>{ext.asOf}</span>}
+            </div>
+          )}
         </div>
       </div>
 

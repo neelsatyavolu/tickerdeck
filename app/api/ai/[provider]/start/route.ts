@@ -14,5 +14,5 @@ export function POST(_req: Request, { params }: { params: Promise<{ provider: st
     const { verifier, challenge, state } = generatePkce();
     await writePkce(provider, { verifier, state });
     return NextResponse.json({ authorizeUrl: buildAuthorizeUrl(provider, challenge, state) });
-  });
+  }, "sensitive");
 }

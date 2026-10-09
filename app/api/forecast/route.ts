@@ -18,5 +18,5 @@ export function POST(req: Request) {
     const parsed = body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     return ok(await forecastExposures(parsed.data.exposures, parsed.data.horizon));
-  });
+  }, "marketHeavy");
 }

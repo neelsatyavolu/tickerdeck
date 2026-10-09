@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDay, parseHistory, parseNum, parseSummary, parseTargets } from "./nasdaq";
+import { parseDay, parseExtended, parseHistory, parseNum, parseSummary, parseTargets } from "./nasdaq";
 
 describe("parseNum", () => {
   it("strips currency, commas and percent signs", () => {
@@ -118,5 +118,27 @@ describe("firstClass", () => {
 
   it("resolves null when every class comes back empty or fails", async () => {
     expect(await firstClass((cls) => (cls === "stocks" ? Promise.reject(new Error("x")) : delay(1, null)))).toBeNull();
+  });
+});
+
+describe("parseExtended", () => {
+  const block = (price: string, change = "-0.34", pct = "-0.10%", ts = "Oct 9, 2026 5:17 PM ET") => ({ lastSalePrice: price, netChange: change, percentageChange: pct, lastTradeTimestamp: ts });
+  it("reads after-hours trades against the close", () => {
+    expect(parseExtended({ marketStatus: "After-Hours", primaryData: block("$336.30"), secondaryData: block("$336.64", "-3.78", "-1.11%", "Closed at Oct 9, 2026 4:00 PM ET") })).toEqual({
+      session: "after",
+      price: 336.3,
+      close: 336.64,
+      change: -0.34,
+      changePct: -0.001,
+      asOf: "5:17 PM ET",
+    });
+  });
+  it("reads pre-market", () => {
+    expect(parseExtended({ marketStatus: "Pre-Market", primaryData: block("$10.50", "0.50", "5.00%", "Oct 9, 2026 8:01 AM ET"), secondaryData: block("$10.00") })?.session).toBe("pre");
+  });
+  it("is null during the regular session or without data", () => {
+    expect(parseExtended({ marketStatus: "Market Open", primaryData: block("$10.00"), secondaryData: null })).toBeNull();
+    expect(parseExtended({ marketStatus: "Closed", primaryData: block("$10.00"), secondaryData: block("$10.00") })).toBeNull();
+    expect(parseExtended(null)).toBeNull();
   });
 });

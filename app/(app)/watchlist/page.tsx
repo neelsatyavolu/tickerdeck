@@ -12,6 +12,7 @@ import { ErrorText, Seg } from "@/components/ui";
 import { useOverviews } from "@/components/useOverviews";
 import { useWatchlist } from "@/components/Watchlist";
 import { prefetchStock } from "@/lib/client/prefetch";
+import { useExtended } from "@/components/useExtended";
 import { pct, priceOf, tone } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { INDEXES } from "@/lib/market/indexes";
@@ -132,6 +133,8 @@ function WatchlistView() {
     setDragging(null);
     setDropAt(null);
   };
+
+  const ext = useExtended(symbols, prices);
 
   const steps = [
     { label: "Watchlist", done: !loading },
@@ -312,7 +315,14 @@ function WatchlistView() {
                   <td className="left">
                     <Sparkline values={r.overview?.spark ?? []} label={`${r.symbol} over 3 months: ${pct(r.r3m, 1)}`} />
                   </td>
-                  <td>{priceOf(r.symbol, r.price)}</td>
+                  <td>
+                    {priceOf(r.symbol, r.price)}
+                    {ext[r.symbol] && (
+                      <div className={`${tone(ext[r.symbol].changePct)}`} style={{ fontSize: 11 }} title={`${ext[r.symbol].session === "pre" ? "Pre-market" : "After hours"} ${ext[r.symbol].asOf}`}>
+                        {ext[r.symbol].session === "pre" ? "pre" : "AH"} {priceOf(r.symbol, ext[r.symbol].price)} {pct(ext[r.symbol].changePct)}
+                      </div>
+                    )}
+                  </td>
                   <td className={tone(r.day)}>{pct(r.day)}</td>
                   <td className={tone(r.r1m)}>{pct(r.r1m, 1)}</td>
                   <td className={tone(r.r3m)}>{pct(r.r3m, 1)}</td>

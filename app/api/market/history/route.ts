@@ -15,5 +15,5 @@ export function GET(req: Request) {
     const parsed = query.safeParse({ symbol: params.get("symbol") ?? "", range: params.get("range") ?? undefined });
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     return ok(await history(parsed.data.symbol, parsed.data.range));
-  });
+  }, "marketLight");
 }

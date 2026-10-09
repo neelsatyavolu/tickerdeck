@@ -18,5 +18,5 @@ export function GET(req: Request) {
     const parsed = query.safeParse(new URL(req.url).searchParams.get("symbols") ?? "");
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     return ok(await fundamentals([...new Set(parsed.data)]));
-  });
+  }, "marketHeavy");
 }

@@ -14,7 +14,7 @@
     "migrate": "node --env-file=.env.local scripts/migrate.mjs"
   },
   "dependencies": {
-    "@neelsatyavolu/shared-ai-auth": "github:neelsatyavolu/shared-ai-auth#31ac039",
+    "@neelsatyavolu/shared-ai-auth": "github:neelsatyavolu/shared-ai-auth#31ac03997710d12a8fcc13def4004132ceb2864d",
     "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/serverless": "^1.2.0",
     "@vercel/functions": "^3.9.11",

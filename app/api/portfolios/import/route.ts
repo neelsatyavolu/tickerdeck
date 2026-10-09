@@ -23,5 +23,5 @@ export function POST(req: Request) {
     const target = "portfolioId" in parsed.data ? { portfolioId: parsed.data.portfolioId } : { portfolio: (raw as { portfolio: z.input<typeof portfolioInputSchema> }).portfolio };
     const id = await importHoldings(user.id, target, holdings);
     return ok({ id, imported: holdings.length }, { status: 201 });
-  });
+  }, "write");
 }

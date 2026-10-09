@@ -13,5 +13,5 @@ export function GET(req: Request) {
     const parsed = querySchema.safeParse(new URL(req.url).searchParams.get("q") ?? "");
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     return ok(await search(parsed.data));
-  });
+  }, "marketLight");
 }

@@ -73,7 +73,19 @@ export function recommendations(symbol: string): Promise<Recommendation[]> {
   });
 }
 
-type RawNews = { datetime: number; headline: string; source: string; url: string; summary: string };
+type RawNews = { datetime: number; headline: string; source: string; url: string; summary: string; image?: string; related?: string };
+
+function toItem(n: RawNews): NewsItem {
+  return {
+    time: n.datetime * 1000,
+    headline: n.headline,
+    source: n.source,
+    url: n.url,
+    summary: n.summary?.slice(0, 400) ?? "",
+    image: n.image?.startsWith("https://") ? n.image : null,
+    related: (n.related ?? "").split(",").map((s) => s.trim()).filter((s) => /^[A-Z][A-Z0-9.-]{0,9}$/.test(s)),
+  };
+}
 
 function isoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -88,7 +100,7 @@ export function news(symbol: string, days = 10): Promise<NewsItem[]> {
       .filter((n) => n.headline && n.url?.startsWith("https://"))
       .sort((a, b) => b.datetime - a.datetime)
       .slice(0, 12)
-      .map((n) => ({ time: n.datetime * 1000, headline: n.headline, source: n.source, url: n.url, summary: n.summary?.slice(0, 400) ?? "" }));
+      .map(toItem);
   });
 }
 
@@ -131,6 +143,31 @@ export function peers(symbol: string): Promise<string[]> {
   });
 }
 
+/** Finnhub's market news feeds, up to 100 stories each. */
+export function newsFeed(category: "general" | "merger"): Promise<NewsItem[]> {
+  return memo(`fh:feed:${category}`, NEWS_TTL, async () => {
+    const rows = await get<RawNews[]>("news", { category });
+    return (Array.isArray(rows) ? rows : []).filter((n) => n.headline && n.url?.startsWith("https://")).map(toItem);
+  });
+}
+
+/** Company news for the news page: more stories over a shorter window. */
+export function companyFeed(symbol: string): Promise<NewsItem[]> {
+  return memo(`fh:cfeed:${symbol}`, NEWS_TTL, async () => {
+    const to = new Date();
+    const from = new Date(to.getTime() - 4 * 86_400_000);
+    const rows = await get<RawNews[]>("company-news", { symbol, from: isoDay(from), to: isoDay(to) });
+    return (Array.isArray(rows) ? rows : [])
+      .filter((n) => n.headline && n.url?.startsWith("https://"))
+      .sort((a, b) => b.datetime - a.datetime)
+      .slice(0, 30)
+      .map((n) => {
+        const item = toItem(n);
+        return { ...item, related: [...new Set([symbol, ...(item.related ?? [])])] };
+      });
+  });
+}
+
 /** General market headlines (used on index pages, which have no company news). */
 export function marketNews(): Promise<NewsItem[]> {
   return memo("fh:marketnews", NEWS_TTL, async () => {
@@ -139,6 +176,6 @@ export function marketNews(): Promise<NewsItem[]> {
       .filter((n) => n.headline && n.url?.startsWith("https://"))
       .sort((a, b) => b.datetime - a.datetime)
       .slice(0, 12)
-      .map((n) => ({ time: n.datetime * 1000, headline: n.headline, source: n.source, url: n.url, summary: n.summary?.slice(0, 400) ?? "" }));
+      .map(toItem);
   });
 }

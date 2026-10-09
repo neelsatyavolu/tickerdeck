@@ -10,5 +10,5 @@ export function GET(req: Request) {
     const parsed = symbolListSchema.safeParse(new URL(req.url).searchParams.get("symbols") ?? "");
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     return ok(await quotes([...new Set(parsed.data)]));
-  });
+  }, "marketLight");
 }

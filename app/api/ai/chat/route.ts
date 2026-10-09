@@ -43,5 +43,5 @@ export function POST(req: Request) {
     return new Response(stream, {
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
     });
-  });
+  }, "ai");
 }

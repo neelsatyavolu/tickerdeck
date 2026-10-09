@@ -195,6 +195,40 @@ export function summary(symbol: string): Promise<NasdaqSummary | null> {
   });
 }
 
+type RawQuoteBlock = { lastSalePrice?: string; netChange?: string; percentageChange?: string; lastTradeTimestamp?: string };
+type RawExtendedInfo = { marketStatus?: string; primaryData?: RawQuoteBlock | null; secondaryData?: RawQuoteBlock | null };
+
+/** A pre-market or after-hours price next to the regular-session close. */
+export type ExtendedQuote = { session: "pre" | "after"; price: number; close: number | null; change: number | null; changePct: number | null; asOf: string | null };
+
+/**
+ * Nasdaq's info endpoint reports the extended-hours trade as primaryData and
+ * the regular close as secondaryData ("Closed at … 4:00 PM ET"). Outside
+ * extended hours there's no secondaryData, or both prices are the same.
+ */
+export function parseExtended(info: RawExtendedInfo | null): ExtendedQuote | null {
+  const primary = info?.primaryData;
+  const secondary = info?.secondaryData;
+  const price = parseNum(primary?.lastSalePrice);
+  const close = parseNum(secondary?.lastSalePrice);
+  if (!primary || !secondary || price === null || close === null) return null;
+  const status = (info?.marketStatus ?? "").toLowerCase();
+  const session = status.includes("pre") ? "pre" : status.includes("after") ? "after" : price !== close ? "after" : null;
+  if (!session) return null;
+  const pct = parseNum(primary.percentageChange);
+  const time = /(\d{1,2}:\d{2} [AP]M ET)/.exec(primary.lastTradeTimestamp ?? "")?.[1] ?? null;
+  return { session, price, close, change: parseNum(primary.netChange), changePct: pct === null ? null : pct / 100, asOf: time };
+}
+
+export function extended(symbol: string): Promise<ExtendedQuote | null> {
+  return memo(`nq:ext:${symbol}`, 60_000, async () => {
+    const cls = await assetClass(symbol);
+    // Mutual funds price once a day; they have no extended session.
+    if (!cls || cls === "mutualfunds") return null;
+    return parseExtended((await get<RawExtendedInfo>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`)).data);
+  });
+}
+
 /** Latest close and the one before it. Mutual funds price once a day, so this is their quote. */
 export function latestQuote(symbol: string, points: PricePoint[]): QuoteSnapshot | null {
   if (points.length < 2) return null;

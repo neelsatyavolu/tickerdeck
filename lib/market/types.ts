@@ -30,7 +30,7 @@ export type AnalystTargets = {
   rating: string | null;
 };
 
-export type NewsItem = { time: number; headline: string; source: string; url: string; summary: string };
+export type NewsItem = { time: number; headline: string; source: string; url: string; summary: string; image?: string | null; related?: string[] };
 
 export type SymbolMatch = { symbol: string; name: string; type: string };
 

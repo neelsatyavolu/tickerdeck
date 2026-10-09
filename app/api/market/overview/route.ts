@@ -25,5 +25,5 @@ export function GET(req: Request) {
     }
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, symbols.length) }, worker));
     return ok(out);
-  });
+  }, "marketLight");
 }

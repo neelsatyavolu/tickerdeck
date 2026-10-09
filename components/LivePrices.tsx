@@ -3,12 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
 import type { QuoteSnapshot } from "@/lib/market/types";
+import { session } from "@/lib/marketHours";
 
 // Live prices: a REST snapshot for previous close and a starting price, then
 // Finnhub's trade WebSocket on top. Snapshots refresh every minute as a
 // fallback for when the socket is down or the market is closed.
 
-export type LivePrice = { price: number; prevClose: number; time: number; fromTrade: boolean };
+/** `price` is the regular session; trades before 9:30 or after 4:00 ET go to `ext`. */
+export type LivePrice = { price: number; prevClose: number; time: number; fromTrade: boolean; ext?: { price: number; time: number } };
 export type FeedStatus = "connecting" | "live" | "quiet" | "offline";
 
 type Ctx = {
@@ -84,7 +86,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
           for (const q of quotes) {
             const cur = prev[q.symbol];
             // Keep a fresher trade price; always take the snapshot's previous close.
-            next[q.symbol] = cur?.fromTrade && cur.time > q.time ? { ...cur, prevClose: q.prevClose } : { price: q.price, prevClose: q.prevClose, time: q.time, fromTrade: false };
+            next[q.symbol] = cur?.fromTrade && cur.time > q.time ? { ...cur, prevClose: q.prevClose } : { price: q.price, prevClose: q.prevClose, time: q.time, fromTrade: false, ext: cur?.ext };
           }
           return next;
         });
@@ -188,7 +190,10 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         const next = { ...prev };
         for (const [s, { p, t }] of batch) {
           const cur = prev[s];
-          if (!cur || t >= cur.time) next[s] = { price: p, prevClose: cur?.prevClose ?? p, time: t, fromTrade: true };
+          if (session(new Date(t)) !== "regular") {
+            // Extended-hours prints don't move the day's change; they're shown beside it.
+            if (!cur?.ext || t >= cur.ext.time) next[s] = { ...(cur ?? { price: p, prevClose: p, time: t, fromTrade: true }), ext: { price: p, time: t } };
+          } else if (!cur || t >= cur.time) next[s] = { price: p, prevClose: cur?.prevClose ?? p, time: t, fromTrade: true };
         }
         return next;
       });

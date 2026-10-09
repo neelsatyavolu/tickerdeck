@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Footer } from "@/components/Footer";
 import { authClient } from "@/lib/auth/client";
 
 type Mode = "sign-in" | "sign-up";
@@ -88,6 +89,7 @@ function LoginForm() {
         {error && <div className="error" role="alert">{error}</div>}
         {notice && <div className="card" role="status">{notice}</div>}
       </form>
+      <div style={{ marginTop: 48 }}><Footer /></div>
     </main>
   );
 }
