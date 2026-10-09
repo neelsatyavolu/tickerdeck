@@ -7,8 +7,10 @@ import { api } from "./api";
 type PortfolioInput = z.input<typeof portfolioInputSchema>;
 type HoldingInput = z.input<typeof holdingInputSchema>;
 
-const send = <T,>(url: string, method: string, body?: unknown) =>
-  api<T>(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+// keepalive lets small saves finish if the user navigates away right after;
+// bulk imports can exceed keepalive's 64 KB limit, so they don't use it.
+const send = <T,>(url: string, method: string, body?: unknown, keepalive = true) =>
+  api<T>(url, { method, keepalive, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export const listPortfolios = () => api<Portfolio[]>("/api/portfolios");
 export const createPortfolio = async (v: PortfolioInput) => (await send<{ id: string }>("/api/portfolios", "POST", v)).id;
@@ -18,4 +20,4 @@ export const addHolding = (portfolioId: string, v: HoldingInput) => send<null>(`
 export const updateHolding = (id: string, v: HoldingInput) => send<null>(`/api/holdings/${id}`, "PATCH", v);
 export const deleteHolding = (id: string) => send<null>(`/api/holdings/${id}`, "DELETE");
 export const importHoldings = (target: { portfolioId: string } | { portfolio: PortfolioInput }, holdings: HoldingInput[]) =>
-  send<{ id: string; imported: number }>("/api/portfolios/import", "POST", { ...target, holdings });
+  send<{ id: string; imported: number }>("/api/portfolios/import", "POST", { ...target, holdings }, false);
