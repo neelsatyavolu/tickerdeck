@@ -54,7 +54,10 @@ test("watch symbols without holding them", async ({ page }) => {
   await expect.poll(order).toEqual(["^GSPC", "VTSAX", "NVDA"]);
   await page.locator("tbody tr", { hasText: "NVDA" }).dragTo(page.locator("tbody tr", { hasText: "^GSPC" }), { targetPosition: { x: 20, y: 2 } });
   await expect.poll(order).toEqual(["NVDA", "^GSPC", "VTSAX"]);
-  await page.waitForLoadState("networkidle"); // let the last save land
+  // Wait until the server has the new order before reloading.
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch("/api/watchlist")).json()).data.map((w: { symbol: string }) => w.symbol)))
+    .toEqual(["NVDA", "^GSPC", "VTSAX"]);
   await page.reload();
   await expect(page.getByText("3 symbols")).toBeVisible();
   await expect.poll(order).toEqual(["NVDA", "^GSPC", "VTSAX"]);

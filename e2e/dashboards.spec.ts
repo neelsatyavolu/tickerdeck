@@ -40,7 +40,11 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   for (let k = 0; k < 6; k++) await apple.getByRole("button", { name: "Move panel earlier" }).click();
   await expect.poll(async () => (await titles())[0]).toBe("Apple 1Y");
   await page.getByRole("button", { name: "Done" }).click();
-  await page.waitForLoadState("networkidle"); // let the last save land
+  // Wait until the server has the new order before reloading.
+  const dashId = new URL(page.url()).pathname.split("/").pop();
+  await expect
+    .poll(() => page.evaluate(async (id) => (await (await fetch(`/api/dashboards/${id}`)).json()).data.panels[0]?.title, dashId))
+    .toBe("Apple 1Y");
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Market overview" })).toBeVisible({ timeout: 30_000 });
