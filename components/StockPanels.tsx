@@ -60,7 +60,7 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
     ["P/B", num(stats.pb, 1)],
     ["Beta", num(stats.beta, 2)],
     ["Dividend yield", plainPct(stats.dividendYield, 2)],
-    ["Annual dividend", stats.annualDividend === null ? "—" : usd(stats.annualDividend)],
+    ["Annual dividend", stats.annualDividend === null ? "—" : usd(stats.annualDividend, { digits: 2 })],
     ["Ex-dividend", stats.exDividendDate ?? "—"],
     ["Debt / equity", num(stats.debtToEquity, 2)],
     ["Gross margin", plainPct(stats.grossMargin, 1)],

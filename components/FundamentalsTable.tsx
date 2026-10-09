@@ -87,7 +87,7 @@ export function FundamentalsTable({ symbols, onReady }: { symbols: string[]; onR
                 <td className={tone(change)}>{pct(change)}</td>
                 <td>{r?.low52 != null && r?.high52 != null ? `${money(r.low52)} – ${money(r.high52)}` : "—"}</td>
                 <td>{shares(r?.volume ?? null)} / {shares(r?.avgVolume ?? null)}</td>
-                <td>{r?.annualDividend ? `${usd(r.annualDividend)} / ${plainPct(r.dividendYield, 2)}` : r ? "None" : "—"}</td>
+                <td>{r?.annualDividend ? `${usd(r.annualDividend, { digits: 2 })} / ${plainPct(r.dividendYield, 2)}` : r ? "None" : "—"}</td>
                 <td>{r?.peTTM != null ? r.peTTM.toFixed(2) : "—"}</td>
               </tr>
             );
