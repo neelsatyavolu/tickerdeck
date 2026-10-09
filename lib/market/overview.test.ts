@@ -11,7 +11,7 @@ describe("summarize", () => {
     expect(o.spark).toHaveLength(63);
     expect(o.spark.at(-1)).toBe(469);
     expect(o.high52).toBe(469);
-    expect(o.low52).toBe(100);
+    expect(o.low52).toBe(104); // only the last 365 days count
     expect(o.r1m).toBeCloseTo(469 / 439 - 1);
     expect(o.r1y).toBeCloseTo(469 / 104 - 1);
   });

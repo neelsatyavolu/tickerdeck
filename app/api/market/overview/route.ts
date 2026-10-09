@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 const CONCURRENCY = 6;
 
 // GET /api/market/overview?symbols=AAPL,VTSAX — sparkline, returns and
-// 52-week range per symbol from a year of daily closes. Missing ones are null.
+// 52-week range per symbol from two years of daily closes (so 1Y has a
+// starting point). Missing ones are null.
 export function GET(req: Request) {
   return withUser(async () => {
     const parsed = symbolListSchema.safeParse(new URL(req.url).searchParams.get("symbols") ?? "");
@@ -19,7 +20,7 @@ export function GET(req: Request) {
     async function worker() {
       while (next < symbols.length) {
         const s = symbols[next++];
-        out[s] = await history(s, "1y").then(summarize, () => null);
+        out[s] = await history(s, "2y").then(summarize, () => null);
       }
     }
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, symbols.length) }, worker));
