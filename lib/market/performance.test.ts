@@ -17,6 +17,13 @@ describe("periodReturns", () => {
     expect(rows.YTD).not.toBeNull();
   });
 
+  it("starts a window at the first point when history begins a few days late (weekly data)", () => {
+    const weekly = Array.from({ length: 525 }, (_, i) => ({ t: start + 4 * DAY + i * 7 * DAY, close: 100 + i }));
+    const tenYears = [...weekly, { t: start + 3652 * DAY, close: 1000 }];
+    const r = periodReturns(tenYears).find((x) => x.label === "10Y")!;
+    expect(r.value).toBeCloseTo(1000 / 100 - 1);
+  });
+
   it("uses a live price when given", () => {
     const oneWeek = periodReturns(series, 1000).find((r) => r.label === "1W")!;
     expect(oneWeek.value).toBeCloseTo(1000 / 823 - 1);

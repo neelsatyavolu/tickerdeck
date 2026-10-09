@@ -27,8 +27,10 @@ export function periodReturns(points: PricePoint[], livePrice?: number | null): 
   const yearStart = Date.UTC(new Date(last.t).getUTCFullYear(), 0, 1);
   const rows: PeriodReturn[] = WINDOWS.map(([label, days]) => {
     const t = last.t - days * DAY;
-    // Weekly closes in older history: allow a week of slack when matching the start.
-    return { label, value: t < points[0].t - 7 * DAY ? null : ret(closeAt(points, t)) };
+    // Older history is weekly, so the window can start a few days before the
+    // first point; within a week, that first close is the starting price.
+    if (t < points[0].t - 7 * DAY) return { label, value: null };
+    return { label, value: ret(closeAt(points, t) ?? points[0].close) };
   });
   rows.splice(4, 0, { label: "YTD", value: yearStart <= points[0].t ? null : ret(closeAt(points, yearStart - 1)) });
   return rows;
