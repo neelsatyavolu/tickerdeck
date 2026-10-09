@@ -15,7 +15,7 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
   // ChatGPT sign-in is a real link that opens a new tab.
-  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" }).click();
   const connect = page.getByRole("link", { name: /Connect ChatGPT/ });
   await expect(connect).toHaveAttribute("target", "_blank");
   await expect(connect).toHaveAttribute("href", /^https:\/\/auth\.openai\.com\/oauth\/authorize\?/);

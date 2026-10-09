@@ -12,7 +12,7 @@ test("watch symbols without holding them", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
-  await page.getByRole("link", { name: "Watchlist" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Watchlist" }).click();
   await expect(page.getByRole("heading", { name: "Watchlist" })).toBeVisible();
   const add = page.getByPlaceholder("Add to Watchlist");
   for (const sym of ["AAPL", "VTSAX"]) {
@@ -26,7 +26,7 @@ test("watch symbols without holding them", async ({ page }) => {
   await page.goto("/s/NVDA");
   await page.getByRole("button", { name: "Watch", exact: true }).click();
   await expect(page.getByRole("button", { name: /Watching/ })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("link", { name: "Watchlist" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Watchlist" }).click();
   await expect(page.getByRole("row", { name: /^NVDA/ })).toBeVisible();
   await expect(page.getByText("3 symbols")).toBeVisible();
 
@@ -39,7 +39,7 @@ test("watch symbols without holding them", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "^GSPC", exact: true })).toBeVisible();
   await expect(page.getByText(/Market index/)).toBeVisible();
   await expect(page.getByRole("img", { name: /\^GSPC price/ })).toBeVisible();
-  await page.getByRole("link", { name: "Watchlist" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Watchlist" }).click();
 
   await page.getByRole("button", { name: "Stop watching AAPL" }).click();
   await expect(page.getByRole("row", { name: /^AAPL/ })).toHaveCount(0);

@@ -13,7 +13,7 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
-  await page.getByRole("link", { name: "Dashboards" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboards" }).click();
   await expect(page.getByRole("heading", { name: "Dashboards", exact: true })).toBeVisible();
   await page.locator(".grid-cells > div").filter({ hasText: "Market overview" }).getByRole("button", { name: "Use this layout" }).click();
 
