@@ -16,7 +16,7 @@ Personal stock and portfolio tracker. It covers:
   - Nasdaq (`lib/market/nasdaq.ts`): daily price history and volume (stocks and ETFs), analyst targets and their history, and sector/dividend summary.
   - Yahoo Finance (`lib/market/yahoo.ts`): fallback for history and targets only. It rate-limits cloud hosts (429 from Vercel), so Nasdaq is tried first (`lib/market/sources.ts`). Nasdaq's and Yahoo's endpoints are both unofficial.
   - Every stock page links out to the matching Yahoo Finance pages.
-- **Design:** Machine & Ink (`~/DESIGN.md`).
+- **Design:** Machine & Ink: warm ink-black, Geist / Geist Mono / Newsreader, one blue accent, flat with sharp corners.
 
 ## Setup
 
@@ -43,3 +43,7 @@ pnpm test        # unit tests (vitest)
 pnpm typecheck
 pnpm test:e2e    # Playwright; needs the Neon + Finnhub env vars locally
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
