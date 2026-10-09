@@ -11,6 +11,8 @@ import { ErrorText } from "@/components/ui";
 import { useWatchlist } from "@/components/Watchlist";
 import { PANEL_META } from "@/lib/dashboard/schema";
 import { buildTemplate, TEMPLATES } from "@/lib/dashboard/templates";
+import { listPortfolios } from "@/lib/client/portfolios";
+import { listWatchlist } from "@/lib/client/watchlist";
 import { timeAgo } from "@/lib/format";
 
 export default function DashboardsPage() {
@@ -37,9 +39,11 @@ export default function DashboardsPage() {
 
   const fromTemplate = (id: string, symbol?: string, source?: string) =>
     start(id, async () => {
+      // Read the latest portfolios and watchlist, in case they changed in another tab.
+      const [freshPortfolios, freshWatchlist] = await Promise.all([listPortfolios().catch(() => portfolios), listWatchlist().catch(() => watchlist)]);
       const t = buildTemplate(id, {
-        portfolios: portfolios.map((p) => ({ id: p.id, name: p.name, symbols: [...new Set(p.holdings.filter((h) => h.shares > 0).map((h) => h.symbol))] })),
-        watchlist: watchlist.map((w) => w.symbol),
+        portfolios: freshPortfolios.map((p) => ({ id: p.id, name: p.name, symbols: [...new Set(p.holdings.filter((h) => h.shares > 0).map((h) => h.symbol))] })),
+        watchlist: freshWatchlist.map((w) => w.symbol),
         symbol,
         source,
       });

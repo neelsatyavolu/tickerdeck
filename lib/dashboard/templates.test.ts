@@ -40,6 +40,11 @@ describe("wall layout", () => {
     expect(d.panels.slice(1).every((p) => p.type === "price" && p.width === 3)).toBe(true);
   });
 
+  it("explains an empty source instead of inventing symbols", () => {
+    expect(() => buildTemplate("wall", { portfolios: [], watchlist: [], source: "watchlist" })).toThrow(/watchlist is empty/);
+    expect(() => buildTemplate("wall", { portfolios: [], watchlist: [] })).toThrow(/Nothing to show/);
+  });
+
   it("can be limited to one portfolio or the watchlist, and stays within 40 panels", () => {
     expect(buildTemplate("wall", { ...many, source: many.portfolios[1].id }).name).toBe("Play wall");
     expect(buildTemplate("wall", { ...many, source: "watchlist" }).panels.slice(1).map((p) => p.symbols[0])).toEqual(["NVDA", "^GSPC", "AAPL"]);

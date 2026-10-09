@@ -48,7 +48,10 @@ export const TEMPLATES: Template[] = [
     needsSource: true,
     build: (ctx) => {
       const symbols = wallSymbols(ctx);
-      const shown = (symbols.length ? symbols : MEGA_CAPS).slice(0, WALL_MAX_CHARTS);
+      if (symbols.length === 0) {
+        throw new Error(ctx.source === "watchlist" ? "Your watchlist is empty. Watch some symbols first." : "Nothing to show yet. Add holdings or watch some symbols first.");
+      }
+      const shown = symbols.slice(0, WALL_MAX_CHARTS);
       const panels: Omit<Panel, "id">[] = [];
       if (shown.length >= 2) panels.push({ type: "heatmap", title: "Today", symbols: shown, width: 12 });
       for (const s of shown) panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: 3 });
