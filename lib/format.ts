@@ -9,6 +9,17 @@ export function usd(n: number | null | undefined, opts: { digits?: number; compa
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
+/** Index levels are points, not dollars. */
+export function points(n: number | null | undefined, digits = 2): string {
+  if (!isNum(n)) return "—";
+  return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/** A symbol's price: dollars for securities, points for indexes (^GSPC). */
+export function priceOf(symbol: string, n: number | null | undefined, digits?: number): string {
+  return symbol.startsWith("^") ? points(n, digits ?? 2) : usd(n, digits === undefined ? {} : { digits });
+}
+
 export function signedUsd(n: number | null | undefined): string {
   if (!isNum(n)) return "—";
   return `${n > 0 ? "+" : n < 0 ? "−" : ""}${usd(Math.abs(n))}`;

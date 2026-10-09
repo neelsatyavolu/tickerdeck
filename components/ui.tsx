@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { pct, signedUsd, timeAgo, tone } from "@/lib/format";
+import { pct, points, signedUsd, timeAgo, tone } from "@/lib/format";
 import { useFeedStatus } from "./LivePrices";
 
 export function Tile({ label, value, sub, subTone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; subTone?: string }) {
@@ -15,11 +15,12 @@ export function Tile({ label, value, sub, subTone }: { label: string; value: Rea
 }
 
 /** "+$12.30 (+1.20%)" coloured by sign; the sign carries meaning without colour. */
-export function Change({ amount, percent }: { amount?: number | null; percent?: number | null }) {
+export function Change({ amount, percent, money = true }: { amount?: number | null; percent?: number | null; money?: boolean }) {
   const basis = amount ?? percent;
+  const signed = (n: number | null) => (money ? signedUsd(n) : n === null ? "—" : `${n > 0 ? "+" : n < 0 ? "−" : ""}${points(Math.abs(n))}`);
   return (
     <span className={`num ${tone(basis)}`}>
-      {amount !== undefined && signedUsd(amount)}
+      {amount !== undefined && signed(amount)}
       {amount !== undefined && percent !== undefined && " "}
       {percent !== undefined && (amount !== undefined ? `(${pct(percent)})` : pct(percent))}
     </span>

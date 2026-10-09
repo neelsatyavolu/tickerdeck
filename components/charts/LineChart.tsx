@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { nearestIndex, niceTicks, scale, tickLabel } from "@/lib/chart";
-import { shortDate, usd } from "@/lib/format";
+import { points as fmtPoints, shortDate, usd } from "@/lib/format";
 import { useWidth } from "./useWidth";
 
 export type SeriesPoint = { t: number; v: number; volume?: number };
@@ -17,6 +17,8 @@ type Props = {
   overlay?: Overlay;
   /** Draw a volume strip under the price when points carry volume. */
   showVolume?: boolean;
+  /** Dollars (default) or plain points, for indexes. */
+  money?: boolean;
 };
 
 const PAD = { top: 12, right: 12, bottom: 24, left: 56 };
@@ -25,7 +27,8 @@ const VOLUME_H = 44;
 const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 /** Price/value line with an area wash, crosshair and tooltip; optional overlay and volume. */
-export function LineChart({ points, height = 260, label, overlay, showVolume }: Props) {
+export function LineChart({ points, height = 260, label, overlay, showVolume, money = true }: Props) {
+  const fmt = (n: number) => (money ? usd(n) : fmtPoints(n));
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
 
@@ -71,7 +74,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume }: 
   return (
     <div>
       <div className="chart" ref={ref}>
-        <svg width={width} height={height} role="img" aria-label={`${label}: ${usd(first.v)} on ${shortDate(first.t)} to ${usd(last.v)} on ${shortDate(last.t)}`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+        <svg width={width} height={height} role="img" aria-label={`${label}: ${fmt(first.v)} on ${shortDate(first.t)} to ${fmt(last.v)} on ${shortDate(last.t)}`} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
           <g className="grid">
             {ticks.map((t) => (
               <line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
@@ -79,7 +82,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume }: 
           </g>
           <g className="axis">
             {ticks.map((t) => (
-              <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t)}</text>
+              <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t, money)}</text>
             ))}
             <text x={PAD.left} y={height - 6}>{shortDate(first.t)}</text>
             <text x={width - PAD.right} y={height - 6} textAnchor="end">{shortDate(last.t)}</text>
@@ -108,9 +111,9 @@ export function LineChart({ points, height = 260, label, overlay, showVolume }: 
         {h && hover !== null && (
           <div className="tooltip" style={{ left: xs[hover], top: y(h.v) }}>
             <div className="t-label">{shortDate(h.t)}</div>
-            <div>{usd(h.v)}</div>
+            <div>{fmt(h.v)}</div>
             {h.volume ? <div className="t-label">vol {compact(h.volume)}</div> : null}
-            {hTarget && <div className="t-label">{overlay?.label} {usd(hTarget.v)}</div>}
+            {hTarget && <div className="t-label">{overlay?.label} {fmt(hTarget.v)}</div>}
           </div>
         )}
       </div>

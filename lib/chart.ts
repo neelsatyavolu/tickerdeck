@@ -46,7 +46,12 @@ export function addTradingDays(t: number, n: number): number {
   return d.getTime();
 }
 
-export function tickLabel(v: number): string {
+export function tickLabel(v: number, money = true): string {
+  if (!money) {
+    const a = Math.abs(v);
+    if (a >= 1e4) return `${(v / 1e3).toFixed(0)}K`;
+    return v.toLocaleString("en-US", { maximumFractionDigits: a < 10 ? 2 : 0 });
+  }
   const a = Math.abs(v);
   if (a >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
   if (a >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;

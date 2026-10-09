@@ -16,7 +16,7 @@ import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
 import { cachedApi } from "@/lib/client/api";
 import { addHolding } from "@/lib/client/portfolios";
-import { timeAgo, usd } from "@/lib/format";
+import { priceOf, timeAgo } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { lastDays, periodReturns } from "@/lib/market/performance";
 import type { AnalystTargets, EarningsPoint, KeyStats, NewsItem, Profile, QuoteSnapshot, Recommendation, TargetPoint } from "@/lib/market/types";
@@ -102,9 +102,9 @@ export default function StockPage() {
           <div className="serif muted" style={{ fontSize: 19, marginTop: 4 }}>{name ?? " "}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div className="hero-value" style={{ fontSize: 40 }}>{usd(price)}</div>
+          <div className="hero-value" style={{ fontSize: 40 }}>{priceOf(symbol, price)}</div>
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
-            <Change amount={change} percent={change !== null && prevClose ? change / prevClose : null} />
+            <Change amount={change} percent={change !== null && prevClose ? change / prevClose : null} money={!isIndexPage} />
             <span className="faint mono" style={{ fontSize: 12 }}>{live?.fromTrade && lastTrade ? `trade ${timeAgo(live.time)}` : "today"}</span>
           </div>
         </div>
@@ -131,7 +131,7 @@ export default function StockPage() {
         ) : histLoading && all.length === 0 ? (
           <div className="notice">Loading history<span className="caret" aria-hidden="true" /></div>
         ) : (
-          <LineChart points={points} label={`${symbol} price`} height={320} showVolume overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
+          <LineChart points={points} label={`${symbol} price`} height={320} money={!isIndexPage} showVolume overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
         )}
       </section>
 
@@ -147,6 +147,7 @@ export default function StockPage() {
           runKey={`${symbol}:${price !== null}`}
           history={yearPoints}
           onSettled={onForecastSettled}
+          money={!isIndexPage}
           onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range${isIndexPage ? "" : ", analyst targets"} and recent headlines, and name what would move it toward each case.`, { symbol })}
         />
       </section>

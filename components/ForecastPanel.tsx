@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { postJson } from "@/lib/client/api";
 import { HORIZONS, type Forecast, type Horizon } from "@/lib/forecast/montecarlo";
-import { plainPct, usd } from "@/lib/format";
+import { plainPct, points, usd } from "@/lib/format";
 import { FanChart } from "./charts/FanChart";
 import type { SeriesPoint } from "./charts/LineChart";
 import { ErrorText, Seg, Tile } from "./ui";
@@ -20,12 +20,15 @@ type Props = {
   /** Called once a forecast has resolved (with a result or an error), for page loaders. */
   onSettled?: () => void;
   initialHorizon?: Horizon;
+  /** Dollars (default) or plain points, for indexes. */
+  money?: boolean;
 };
 
 const HORIZON_LABEL: Record<Horizon, string> = { "1w": "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", "1y": "1 year" };
 const HORIZON_KEYS = Object.keys(HORIZONS) as Horizon[];
 
-export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSettled, initialHorizon = "3m" }: Props) {
+export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSettled, initialHorizon = "3m", money = true }: Props) {
+  const fmt = (n: number, digits?: number) => (money ? usd(n, digits === undefined ? {} : { digits }) : points(n, digits ?? 2));
   const [horizon, setHorizon] = useState<Horizon>(initialHorizon);
   const [result, setResult] = useState<{ id: string; forecast: Forecast | null; error: string | null } | null>(null);
   const latest = useRef(exposures);
@@ -74,10 +77,10 @@ export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSett
         <div className="notice">Simulating<span className="caret" aria-hidden="true" /></div>
       ) : (
         <div style={{ opacity: loading ? 0.5 : 1, transition: "opacity 150ms" }}>
-          <FanChart history={tail} forecast={forecast} />
+          <FanChart history={tail} forecast={forecast} money={money} />
           <div className="grid-cells cols-4" style={{ marginTop: 16 }}>
-            <Tile label={`Median in ${HORIZON_LABEL[horizon]}`} value={usd(forecast.end.p50)} sub={plainPct(forecast.end.p50 / forecast.start - 1)} />
-            <Tile label="90% range" value={<span className="num" style={{ fontSize: 17 }}>{usd(forecast.end.p5, { digits: 0 })} – {usd(forecast.end.p95, { digits: 0 })}</span>} />
+            <Tile label={`Median in ${HORIZON_LABEL[horizon]}`} value={fmt(forecast.end.p50)} sub={plainPct(forecast.end.p50 / forecast.start - 1)} />
+            <Tile label="90% range" value={<span className="num" style={{ fontSize: 17 }}>{fmt(forecast.end.p5, 0)} – {fmt(forecast.end.p95, 0)}</span>} />
             <Tile label="Chance of gain" value={plainPct(forecast.probGain, 0)} />
             <Tile label="Annual volatility" value={plainPct(forecast.annualVol, 0)} />
           </div>

@@ -16,7 +16,7 @@ import { useOverviews } from "@/components/useOverviews";
 import { useStockInfo } from "@/components/useStockInfo";
 import { prefetchStock } from "@/lib/client/prefetch";
 import type { Panel } from "@/lib/dashboard/schema";
-import { pct, signedUsd, timeAgo, tone, usd } from "@/lib/format";
+import { pct, priceOf, signedUsd, timeAgo, tone, usd } from "@/lib/format";
 import type { HistoryRange } from "@/lib/market/types";
 import { aggregatePositions, portfolioTotals } from "@/lib/portfolio/math";
 
@@ -48,7 +48,7 @@ function TilesView({ panel }: { panel: Panel }) {
       {rows.map((r) => (
         <div key={r.symbol} className="tile">
           <div className="label"><SymbolLink symbol={r.symbol} /></div>
-          <div className="value">{usd(r.price)}</div>
+          <div className="value">{priceOf(r.symbol, r.price)}</div>
           <div className={`sub ${tone(r.change)}`}>{pct(r.change)}</div>
         </div>
       ))}
@@ -137,7 +137,7 @@ function PriceView({ panel }: { panel: Panel }) {
   const points = useMemo(() => (data[symbol] ?? []).map((p) => ({ t: p.t, v: p.close, volume: p.volume })), [data, symbol]);
   if (failed.length) return <div className="notice">No price history for {symbol}.</div>;
   if (loading && points.length === 0) return <Loading />;
-  return <LineChart points={points} label={`${symbol} price`} height={240} showVolume />;
+  return <LineChart points={points} label={`${symbol} price`} height={240} showVolume money={!symbol.startsWith("^")} />;
 }
 
 function CompareView({ panel }: { panel: Panel }) {
@@ -153,7 +153,7 @@ function ForecastView({ panel }: { panel: Panel }) {
   const { data } = useHistories([symbol], "1y");
   const price = prices[symbol]?.price ?? data[symbol]?.at(-1)?.close ?? null;
   const history = useMemo(() => (data[symbol] ?? []).map((p) => ({ t: p.t, v: p.close })), [data, symbol]);
-  return <ForecastPanel exposures={price ? [{ symbol, value: price }] : []} runKey={`${symbol}:${price !== null}`} history={history} initialHorizon={panel.horizon ?? "3m"} />;
+  return <ForecastPanel exposures={price ? [{ symbol, value: price }] : []} runKey={`${symbol}:${price !== null}`} history={history} initialHorizon={panel.horizon ?? "3m"} money={!symbol.startsWith("^")} />;
 }
 
 function StatsView({ panel }: { panel: Panel }) {

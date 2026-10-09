@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { addTradingDays, nearestIndex, niceTicks, scale, tickLabel } from "@/lib/chart";
-import { shortDate, usd } from "@/lib/format";
+import { points as fmtPoints, shortDate, usd } from "@/lib/format";
 import type { Forecast } from "@/lib/forecast/montecarlo";
 import type { SeriesPoint } from "./LineChart";
 import { useWidth } from "./useWidth";
 
-type Props = { history: SeriesPoint[]; forecast: Forecast; height?: number };
+type Props = { history: SeriesPoint[]; forecast: Forecast; height?: number; money?: boolean };
 
 const PAD = { top: 12, right: 64, bottom: 24, left: 56 };
 
 /** Recent history, then the forecast's 50% and 90% ranges and median fanning out. */
-export function FanChart({ history, forecast, height = 260 }: Props) {
+export function FanChart({ history, forecast, height = 260, money = true }: Props) {
+  const fmt = (n: number) => (money ? usd(n) : fmtPoints(n));
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
   const [mountedAt] = useState(() => Date.now());
@@ -47,7 +48,7 @@ export function FanChart({ history, forecast, height = 260 }: Props) {
           width={width}
           height={height}
           role="img"
-          aria-label={`Forecast range: median ${usd(end.p50)}, 90% range ${usd(end.p5)} to ${usd(end.p95)} by ${shortDate(end.t)}`}
+          aria-label={`Forecast range: median ${fmt(end.p50)}, 90% range ${fmt(end.p5)} to ${fmt(end.p95)} by ${shortDate(end.t)}`}
           onPointerMove={onMove}
           onPointerLeave={() => setHover(null)}
         >
@@ -58,7 +59,7 @@ export function FanChart({ history, forecast, height = 260 }: Props) {
           </g>
           <g className="axis">
             {ticks.map((t) => (
-              <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t)}</text>
+              <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t, money)}</text>
             ))}
             {history.length > 1 && <text x={PAD.left} y={height - 6}>{shortDate(tStart)}</text>}
             <text x={x(t0)} y={height - 6} textAnchor={history.length > 1 ? "middle" : "start"}>today</text>
@@ -70,20 +71,20 @@ export function FanChart({ history, forecast, height = 260 }: Props) {
           {history.length > 1 && <path d={hist} fill="none" stroke="var(--fg-2)" strokeWidth={2} strokeLinejoin="round" />}
           <path d={median} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
           <g className="axis">
-            <text x={width - PAD.right + 6} y={y(end.p95)} dy="0.32em">{tickLabel(end.p95)}</text>
-            <text x={width - PAD.right + 6} y={y(end.p50)} dy="0.32em" style={{ fill: "var(--fg)" }}>{tickLabel(end.p50)}</text>
-            <text x={width - PAD.right + 6} y={y(end.p5)} dy="0.32em">{tickLabel(end.p5)}</text>
+            <text x={width - PAD.right + 6} y={y(end.p95)} dy="0.32em">{tickLabel(end.p95, money)}</text>
+            <text x={width - PAD.right + 6} y={y(end.p50)} dy="0.32em" style={{ fill: "var(--fg)" }}>{tickLabel(end.p50, money)}</text>
+            <text x={width - PAD.right + 6} y={y(end.p5)} dy="0.32em">{tickLabel(end.p5, money)}</text>
           </g>
           {h && hover !== null && <line x1={bx[hover]} x2={bx[hover]} y1={PAD.top} y2={height - PAD.bottom} stroke="var(--border-strong)" />}
         </svg>
         {h && hover !== null && (
           <div className="tooltip" style={{ left: bx[hover], top: y(h.p95) }}>
             <div className="t-label">{shortDate(h.t)} · day {h.day}</div>
-            <div>95th {usd(h.p95)}</div>
-            <div>75th {usd(h.p75)}</div>
-            <div>median {usd(h.p50)}</div>
-            <div>25th {usd(h.p25)}</div>
-            <div>5th {usd(h.p5)}</div>
+            <div>95th {fmt(h.p95)}</div>
+            <div>75th {fmt(h.p75)}</div>
+            <div>median {fmt(h.p50)}</div>
+            <div>25th {fmt(h.p25)}</div>
+            <div>5th {fmt(h.p5)}</div>
           </div>
         )}
       </div>

@@ -10,7 +10,7 @@ import { ErrorText } from "@/components/ui";
 import { useOverviews } from "@/components/useOverviews";
 import { useWatchlist } from "@/components/Watchlist";
 import { prefetchStock } from "@/lib/client/prefetch";
-import { pct, tone, usd } from "@/lib/format";
+import { pct, priceOf, tone } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { INDEXES } from "@/lib/market/indexes";
 import { moveItem } from "@/lib/reorder";
@@ -40,7 +40,8 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "range", label: "52-wk range" },
 ];
 
-function RangeCell({ low, high, price }: { low: number | null; high: number | null; price: number | null }) {
+function RangeCell({ symbol, low, high, price }: { symbol: string; low: number | null; high: number | null; price: number | null }) {
+  const usd = (n: number, o?: { digits?: number }) => priceOf(symbol, n, o?.digits);
   if (low === null || high === null || price === null || high <= low) return <span className="faint">—</span>;
   const at = Math.min(1, Math.max(0, (price - low) / (high - low)));
   return (
@@ -225,13 +226,13 @@ export default function WatchlistPage() {
                   <td className="left">
                     <Sparkline values={r.overview?.spark ?? []} label={`${r.symbol} over 3 months: ${pct(r.r3m, 1)}`} />
                   </td>
-                  <td>{usd(r.price)}</td>
+                  <td>{priceOf(r.symbol, r.price)}</td>
                   <td className={tone(r.day)}>{pct(r.day)}</td>
                   <td className={tone(r.r1m)}>{pct(r.r1m, 1)}</td>
                   <td className={tone(r.r3m)}>{pct(r.r3m, 1)}</td>
                   <td className={tone(r.ytd)}>{pct(r.ytd, 1)}</td>
                   <td className={tone(r.r1y)}>{pct(r.r1y, 1)}</td>
-                  <td><RangeCell low={r.overview?.low52 ?? null} high={r.overview?.high52 ?? null} price={r.price} /></td>
+                  <td><RangeCell symbol={r.symbol} low={r.overview?.low52 ?? null} high={r.overview?.high52 ?? null} price={r.price} /></td>
                   <td>
                     {custom && (
                       <>
