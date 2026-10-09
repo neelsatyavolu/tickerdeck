@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createSerialQueue } from "@/lib/client/serial";
 import * as client from "@/lib/client/watchlist";
 import type { WatchItem } from "@/lib/client/watchlist";
 
@@ -16,6 +17,7 @@ type Ctx = {
 };
 
 const WatchlistCtx = createContext<Ctx | null>(null);
+const saves = createSerialQueue();
 
 function load(): Promise<WatchItem[] | Error> {
   return client.listWatchlist().catch((err) => new Error(err instanceof Error ? err.message : "Could not load the watchlist."));
@@ -78,7 +80,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         return [...ordered, ...prev.filter((i) => !symbols.includes(i.symbol))];
       });
       try {
-        await client.reorderWatchlist(symbols);
+        await saves(() => client.reorderWatchlist(symbols));
       } catch (err) {
         apply(await load());
         throw err;

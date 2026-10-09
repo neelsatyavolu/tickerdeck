@@ -18,7 +18,7 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   await page.locator("div", { has: page.getByText("Market overview", { exact: true }) }).getByRole("button", { name: "Use this layout" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Market overview" })).toBeVisible({ timeout: 30_000 });
-  const indexes = page.getByRole("region", { name: "Indexes" });
+  const indexes = page.getByRole("region", { name: "Indexes", exact: true });
   await expect(indexes).toContainText("^GSPC");
   await expect(indexes).toContainText("$");
   await expect(page.getByRole("img", { name: /^Change since/ })).toBeVisible({ timeout: 30_000 });
@@ -40,6 +40,7 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   for (let k = 0; k < 6; k++) await apple.getByRole("button", { name: "Move panel earlier" }).click();
   await expect.poll(async () => (await titles())[0]).toBe("Apple 1Y");
   await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForLoadState("networkidle"); // let the last save land
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Market overview" })).toBeVisible({ timeout: 30_000 });

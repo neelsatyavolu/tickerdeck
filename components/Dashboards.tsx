@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as client from "@/lib/client/dashboards";
+import { createSerialQueue } from "@/lib/client/serial";
 import type { Dashboard, Panel } from "@/lib/dashboard/schema";
 
 type Ctx = {
@@ -16,6 +17,7 @@ type Ctx = {
 };
 
 const DashboardsCtx = createContext<Ctx | null>(null);
+const saves = createSerialQueue();
 
 function load(): Promise<Dashboard[] | Error> {
   return client.listDashboards().catch((err) => new Error(err instanceof Error ? err.message : "Could not load dashboards."));
@@ -56,7 +58,7 @@ export function DashboardsProvider({ children }: { children: React.ReactNode }) 
     async (id: string, patch: { name?: string; panels?: Panel[] }) => {
       setDashboards((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
       try {
-        await client.updateDashboard(id, patch);
+        await saves(() => client.updateDashboard(id, patch));
       } catch (err) {
         apply(await load());
         throw err;
