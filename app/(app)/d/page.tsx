@@ -22,6 +22,7 @@ export default function DashboardsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [deepDive, setDeepDive] = useState("");
   const [blankName, setBlankName] = useState("");
+  const [wallSource, setWallSource] = useState("all");
 
   const start = async (key: string, make: () => Promise<string>) => {
     setBusy(key);
@@ -34,12 +35,13 @@ export default function DashboardsPage() {
     }
   };
 
-  const fromTemplate = (id: string, symbol?: string) =>
+  const fromTemplate = (id: string, symbol?: string, source?: string) =>
     start(id, async () => {
       const t = buildTemplate(id, {
         portfolios: portfolios.map((p) => ({ id: p.id, name: p.name, symbols: [...new Set(p.holdings.filter((h) => h.shares > 0).map((h) => h.symbol))] })),
         watchlist: watchlist.map((w) => w.symbol),
         symbol,
+        source,
       });
       return create(t.name, t.panels);
     });
@@ -73,7 +75,16 @@ export default function DashboardsPage() {
             <div key={t.id} className="stack" style={{ gap: 10 }}>
               <div className="label" style={{ color: "var(--fg)" }}>{t.name}</div>
               <p className="serif muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>{t.description}</p>
-              {t.needsSymbol ? (
+              {t.needsSource ? (
+                <div className="row">
+                  <select className="input" value={wallSource} onChange={(e) => setWallSource(e.target.value)} aria-label="Symbols for the wall">
+                    <option value="all">All holdings + watchlist</option>
+                    <option value="watchlist">Watchlist</option>
+                    {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <button className="btn btn-primary" disabled={busy !== null} onClick={() => fromTemplate(t.id, undefined, wallSource)}>{busy === t.id ? "Creating" : "Create"}</button>
+                </div>
+              ) : t.needsSymbol ? (
                 <div className="row">
                   <SymbolSearch placeholder="Pick a ticker" keepValue onSelect={(s) => setDeepDive(s)} width={160} />
                   <button className="btn btn-primary" disabled={!deepDive || busy !== null} onClick={() => fromTemplate(t.id, deepDive)}>{busy === t.id ? "Creating" : "Create"}</button>

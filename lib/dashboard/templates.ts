@@ -7,9 +7,33 @@ export type TemplateContext = {
   portfolios: { id: string; name: string; symbols: string[] }[];
   watchlist: string[];
   symbol?: string;
+  /** For the wall: "all", "watchlist", or a portfolio id. */
+  source?: string;
 };
 
-type Template = { id: string; name: string; description: string; needsSymbol?: boolean; build: (ctx: TemplateContext) => Omit<Panel, "id">[] };
+type Template = {
+  id: string;
+  name: string;
+  description: string;
+  needsSymbol?: boolean;
+  needsSource?: boolean;
+  build: (ctx: TemplateContext) => Omit<Panel, "id">[];
+};
+
+const WALL_MAX_CHARTS = 39; // plus the heatmap = the 40-panel limit
+
+/** Symbols for the wall: one portfolio, the watchlist, or everything (holdings first). */
+export function wallSymbols({ portfolios, watchlist, source = "all" }: TemplateContext): string[] {
+  const fromPortfolios = (ps: TemplateContext["portfolios"]) => ps.flatMap((p) => p.symbols);
+  const list = source === "watchlist" ? watchlist : source === "all" ? [...fromPortfolios(portfolios), ...watchlist] : fromPortfolios(portfolios.filter((p) => p.id === source));
+  return [...new Set(list)];
+}
+
+function wallName({ portfolios, source = "all" }: TemplateContext): string {
+  if (source === "watchlist") return "Watchlist wall";
+  if (source === "all") return "Everything wall";
+  return `${portfolios.find((p) => p.id === source)?.name ?? "Portfolio"} wall`;
+}
 
 const MEGA_CAPS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA", "BRK.B", "JPM", "LLY", "V", "XOM", "UNH", "WMT", "COST"];
 const BIG_TECH = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA"];
@@ -17,6 +41,20 @@ const FUNDS = ["SPY", "VOO", "VTI", "QQQ", "SCHD", "VYM", "BND", "VTSAX"];
 const INDEXES = ["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX"];
 
 export const TEMPLATES: Template[] = [
+  {
+    id: "wall",
+    name: "Everything wall",
+    description: "A screen full of small charts: one per symbol in a portfolio, your watchlist, or all of them, with a heatmap on top.",
+    needsSource: true,
+    build: (ctx) => {
+      const symbols = wallSymbols(ctx);
+      const shown = (symbols.length ? symbols : MEGA_CAPS).slice(0, WALL_MAX_CHARTS);
+      const panels: Omit<Panel, "id">[] = [];
+      if (shown.length >= 2) panels.push({ type: "heatmap", title: "Today", symbols: shown, width: 12 });
+      for (const s of shown) panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: 3 });
+      return panels;
+    },
+  },
   {
     id: "market",
     name: "Market overview",
@@ -96,5 +134,6 @@ export function buildTemplate(id: string, ctx: TemplateContext): { name: string;
   const t = TEMPLATES.find((x) => x.id === id);
   if (!t) throw new Error("Unknown layout");
   const panels = panelsSchema.parse(t.build(ctx).map((p) => ({ ...p, id: newPanelId() })));
-  return { name: t.needsSymbol && ctx.symbol ? `${ctx.symbol} deep dive` : t.name, panels };
+  const name = t.needsSymbol && ctx.symbol ? `${ctx.symbol} deep dive` : t.needsSource ? wallName(ctx) : t.name;
+  return { name, panels };
 }

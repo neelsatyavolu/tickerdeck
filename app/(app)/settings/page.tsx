@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { ErrorText } from "@/components/ui";
 import { authClient } from "@/lib/auth/client";
@@ -27,28 +27,33 @@ async function post(url: string, body?: object): Promise<{ ok?: boolean; error?:
   return json;
 }
 
+const PREPARE_EVERY = 8 * 60_000; // the server keeps a sign-in attempt for 10 minutes
+
 function Connection({ provider, connected, onChange }: { provider: Provider; connected: boolean; onChange: () => Promise<void> }) {
   const [pending, setPending] = useState(false);
   const [pasted, setPasted] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signInUrl, setSignInUrl] = useState<string | null>(null);
   const info = INFO[provider];
 
-  const start = async () => {
-    setError(null);
-    // Open the tab synchronously so popup blockers allow it, then point it at the sign-in URL.
-    const tab = window.open("about:blank", "_blank");
-    try {
-      const { authorizeUrl } = await post(`/api/ai/${provider}/start`);
-      if (!authorizeUrl) throw new Error("No sign-in URL returned.");
-      if (tab) tab.location.href = authorizeUrl;
-      else window.location.href = authorizeUrl;
-      setPending(true);
-    } catch (err) {
-      tab?.close();
-      setError(err instanceof Error ? err.message : "Could not start sign-in.");
-    }
-  };
+  // Prepare the sign-in link ahead of time so "Connect" is a real link that
+  // opens a new tab (no popup blockers, and this page never navigates away).
+  // Not refreshed while a sign-in is in progress, or the pasted code wouldn't match.
+  useEffect(() => {
+    if (connected || pending) return;
+    let cancelled = false;
+    const prepare = () =>
+      post(`/api/ai/${provider}/start`)
+        .then(({ authorizeUrl }) => !cancelled && authorizeUrl && setSignInUrl(authorizeUrl))
+        .catch((err) => !cancelled && setError(err instanceof Error ? err.message : "Could not prepare sign-in."));
+    prepare();
+    const id = setInterval(prepare, PREPARE_EVERY);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [provider, connected, pending]);
 
   const complete = async () => {
     setBusy(true);
@@ -57,6 +62,7 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
       await post(`/api/ai/${provider}/complete`, { callback: pasted.trim() });
       setPending(false);
       setPasted("");
+      setSignInUrl(null);
       await onChange();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
@@ -77,6 +83,15 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
     }
   };
 
+  const signInLink = (label: string, className: string) =>
+    signInUrl ? (
+      <a className={className} href={signInUrl} target="_blank" rel="noopener noreferrer" onClick={() => setPending(true)}>
+        {label} <span aria-hidden="true">↗</span>
+      </a>
+    ) : (
+      <button className={className} disabled>Preparing sign-in…</button>
+    );
+
   return (
     <div className="stack" style={{ gap: 12 }}>
       <div className="spread">
@@ -88,16 +103,16 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
         <div><button className="btn btn-ghost" onClick={disconnect} disabled={busy}>Disconnect</button></div>
       ) : pending ? (
         <form className="stack" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); complete(); }}>
-          <p className="notice" style={{ margin: 0 }}>{info.paste}</p>
+          <p className="notice" style={{ margin: 0 }}>Sign-in opened in a new tab. {info.paste}</p>
           <input className="input mono" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste the address or code" autoFocus spellCheck={false} autoComplete="off" />
           <div className="row">
             <button className="btn btn-primary" disabled={busy || !pasted.trim()}>{busy ? "Connecting" : "Finish connecting"}</button>
-            <button type="button" className="btn-text" onClick={start}>Open sign-in again</button>
+            {signInLink("Open sign-in again", "btn-text")}
             <button type="button" className="btn-text" onClick={() => setPending(false)}>Cancel</button>
           </div>
         </form>
       ) : (
-        <div><button className="btn btn-primary" onClick={start}>Connect {info.name}</button></div>
+        <div>{signInLink(`Connect ${info.name}`, "btn btn-primary")}</div>
       )}
       <ErrorText error={error} />
     </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { PanelEditor } from "@/components/dashboard/PanelEditor";
 import { PanelView } from "@/components/dashboard/PanelViews";
@@ -26,6 +26,18 @@ export default function DashboardPage() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropOn, setDropOn] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const wall = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === wall.current && wall.current !== null);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const enterFullscreen = () => {
+    wall.current?.requestFullscreen?.().catch(() => setError("Your browser blocked full screen."));
+  };
 
   const symbols = useMemo(() => [...new Set(dashboard?.panels.flatMap((p) => p.symbols) ?? [])], [dashboard]);
   const { prices, checked } = useLivePrices(symbols);
@@ -105,7 +117,10 @@ export default function DashboardPage() {
               <button className="btn btn-primary" onClick={() => { setEditing(false); setAdding(false); setEditingPanel(null); }}>Done</button>
             </>
           ) : (
-            <button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit layout</button>
+            <>
+              {panels.length > 0 && <button className="btn btn-ghost" onClick={enterFullscreen}>Full screen</button>}
+              <button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit layout</button>
+            </>
           )}
           {!adding && <button className="btn btn-primary" onClick={() => { setAdding(true); setEditing(true); }}>Add panel</button>}
         </div>
@@ -127,7 +142,16 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : (
-        <div className="dash-grid" style={{ marginTop: 24 }}>
+        <div ref={wall} className="dash-wall" style={{ marginTop: 24 }}>
+        {fullscreen && (
+          <div className="dash-wall-head">
+            <span className="label" style={{ color: "var(--fg)" }}>{dashboard?.name}</span>
+            <span className="faint mono" style={{ fontSize: 12 }}>Esc to exit</span>
+            <span style={{ flex: 1 }} />
+            <button className="btn-text" onClick={() => document.exitFullscreen()}>Exit full screen</button>
+          </div>
+        )}
+        <div className="dash-grid">
           {panels.map((p, i) =>
             editingPanel === p.id ? (
               <div key={p.id} className="dash-panel span-12">
@@ -164,6 +188,7 @@ export default function DashboardPage() {
               </section>
             ),
           )}
+        </div>
         </div>
       )}
       {editing && panels.length > 0 && <p className="notice" style={{ marginTop: 12 }}>Drag panels to rearrange, or use ← → to move and − + to resize. Changes save automatically.</p>}

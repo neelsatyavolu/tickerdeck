@@ -137,7 +137,8 @@ function PriceView({ panel }: { panel: Panel }) {
   const points = useMemo(() => (data[symbol] ?? []).map((p) => ({ t: p.t, v: p.close, volume: p.volume })), [data, symbol]);
   if (failed.length) return <div className="notice">No price history for {symbol}.</div>;
   if (loading && points.length === 0) return <Loading />;
-  return <LineChart points={points} label={`${symbol} price`} height={240} showVolume money={!symbol.startsWith("^")} />;
+  const compact = panel.width <= 4;
+  return <LineChart points={points} label={`${symbol} price`} height={compact ? 150 : 240} showVolume={!compact} money={!symbol.startsWith("^")} />;
 }
 
 function CompareView({ panel }: { panel: Panel }) {

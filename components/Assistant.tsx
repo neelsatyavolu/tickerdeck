@@ -213,19 +213,24 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     setMessages((prev) => (prev.length && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev));
   };
 
-  const chooseProvider = (p: Provider) => {
+  const chooseModelKey = (key: string) => {
+    const [p, id] = key.split(":") as [Provider, string];
+    const next = { ...modelPref, [p]: id || undefined };
     setProvider(p);
-    writePrefs({ provider: p, model: modelPref });
-  };
-  const chooseModel = (id: string) => {
-    const next = { ...modelPref, [provider]: id };
     setModelPref(next);
-    writePrefs({ provider, model: next });
+    writePrefs({ provider: p, model: next });
   };
 
   const value = useMemo(() => ({ open, setOpen, ask, status, refreshStatus }), [open, ask, status, refreshStatus]);
   const connected = status ? (Object.keys(status) as Provider[]).filter((p) => status[p]) : [];
   const focus = focusFromPath(pathname);
+  const [expanded, setExpanded] = useState(false);
+  const modelLabel = models?.[provider]?.find((m) => m.id === modelPref[provider])?.label ?? `${PROVIDER_LABEL[provider]} default`;
+  const suggestions = [
+    focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "How are my portfolios doing today, and what's driving it?",
+    focus.dashboardId ? "Add panels comparing my holdings with the S&P 500 and today's movers." : "Which position is most concentrated or riskiest?",
+    focus.portfolioId ? "What would a 10% market drop do to this portfolio?" : "Build me a dashboard for semiconductor stocks.",
+  ];
 
   // Escape closes the sheet.
   useEffect(() => {
@@ -241,44 +246,50 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     <AssistantCtx.Provider value={value}>
       {children}
       {!open && (
-        <button className="btn btn-primary sheet-launcher" onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <button className="btn btn-primary assist-launcher" onClick={() => setOpen(true)} aria-haspopup="dialog">
           Ask AI{focus.symbol ? ` about ${focus.symbol}` : focus.portfolioId ? " about this portfolio" : focus.dashboardId ? " about this dashboard" : ""}
         </button>
       )}
-      <aside className="sheet" data-open={open} role="dialog" aria-label="AI assistant" aria-hidden={!open}>
-        <div className="sheet-head">
-          <span className="label" style={{ color: "var(--fg)" }}>Assistant</span>
-          {connected.length > 0 && (
-            <>
-              <select className="input" style={{ padding: "4px 6px", fontSize: 12 }} value={provider} onChange={(e) => chooseProvider(e.target.value as Provider)} aria-label="Provider">
-                {connected.map((p) => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
-              </select>
-              {models && (
-                <select className="input" style={{ padding: "4px 6px", fontSize: 12, maxWidth: 140 }} value={modelPref[provider] ?? ""} onChange={(e) => chooseModel(e.target.value)} aria-label="Model">
-                  <option value="">Default model</option>
-                  {models[provider].map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </select>
-              )}
-            </>
-          )}
+      <aside className="assist" data-open={open} data-expanded={expanded} role="dialog" aria-label="AI assistant" aria-hidden={!open}>
+        <div className="assist-head">
+          <span className="assist-mark" aria-hidden="true" />
+          <span className="assist-title">Assistant</span>
+          {connected.length > 0 && <span className="assist-chip">{modelLabel}</span>}
           <span style={{ flex: 1 }} />
           {messages.length > 0 && <button className="btn-text" onClick={() => { stop(); setMessages([]); setError(null); }}>Clear</button>}
-          <button className="btn-text" onClick={() => setOpen(false)} aria-label="Close assistant">Close</button>
+          <button className="btn-text" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? "Shrink assistant" : "Expand assistant"} title={expanded ? "Shrink" : "Expand"}>{expanded ? "↙" : "↗"}</button>
+          <button className="btn-text" onClick={() => setOpen(false)} aria-label="Close assistant" title="Close" style={{ fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
-        <div className="sheet-body">
+        {connected.length > 0 && models && (
+          <div className="assist-models">
+            <select className="input" value={`${provider}:${modelPref[provider] ?? ""}`} onChange={(e) => chooseModelKey(e.target.value)} aria-label="Model">
+              {connected.map((p) => (
+                <optgroup key={p} label={PROVIDER_LABEL[p]}>
+                  <option value={`${p}:`}>{PROVIDER_LABEL[p]} default</option>
+                  {models[p].map((m) => <option key={m.id} value={`${p}:${m.id}`}>{m.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <span className="faint" style={{ fontSize: 13, whiteSpace: "nowrap" }}>Default: {PROVIDER_LABEL[provider]}</span>
+          </div>
+        )}
+        <div className="assist-body">
           {status && connected.length === 0 ? (
-            <div className="empty">
-              <p>Connect your ChatGPT or Grok subscription to ask questions about your portfolios.</p>
-              <Link className="btn btn-primary" href="/settings" onClick={() => setOpen(false)}>Open settings</Link>
+            <div className="stack">
+              <p className="assist-intro">Connect your ChatGPT or Grok subscription to ask about your portfolios, watchlist and dashboards.</p>
+              <div><Link className="btn btn-primary" href="/settings" onClick={() => setOpen(false)}>Open settings</Link></div>
             </div>
           ) : messages.length === 0 ? (
             <div className="stack">
-              <p className="serif muted" style={{ fontSize: 17, margin: 0 }}>
-                Ask about your portfolios, a ticker, or the forecasts. It sees your holdings, live prices, analyst data and recent news{focus.symbol ? `, focused on ${focus.symbol}` : focus.portfolioId ? ", focused on this portfolio" : ""}.
+              <p className="assist-intro">
+                I can see your <em>portfolios</em>, <em>watchlist</em>, <em>dashboards</em>, live prices, analyst data and recent news{focus.symbol ? `, focused on ${focus.symbol}` : focus.portfolioId ? ", focused on this portfolio" : focus.dashboardId ? ", focused on this dashboard" : ""}. Ask about performance, risk, forecasts, or ask me to build dashboard panels.
               </p>
-              {["How is my portfolio doing today, and what's driving it?", "Which position is most concentrated or riskiest?", focus.dashboardId ? "Add panels comparing my holdings with the S&P 500 and showing today's movers." : focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "Summarise recent news for my holdings."].map((s) => (
-                <button key={s} className="btn btn-ghost" style={{ justifyContent: "flex-start", textAlign: "left" }} onClick={() => ask(s)}>{s}</button>
-              ))}
+              <div className="assist-try">
+                <div className="label" style={{ color: "var(--fg)" }}>Try</div>
+                {suggestions.map((q) => (
+                  <button key={q} className="assist-suggestion" onClick={() => ask(q)}>“{q}”</button>
+                ))}
+              </div>
             </div>
           ) : (
             messages.map((m, i) =>
@@ -297,38 +308,27 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </div>
-        {connected.length > 0 && <Composer busy={busy} onSend={(t) => ask(t)} onStop={stop} />}
+        {connected.length > 0 && <Composer busy={busy} onSend={(t) => ask(t)} onStop={stop} open={open} />}
       </aside>
     </AssistantCtx.Provider>
   );
 }
 
-function Composer({ busy, onSend, onStop }: { busy: boolean; onSend: (t: string) => void; onStop: () => void }) {
+function Composer({ busy, onSend, onStop, open }: { busy: boolean; onSend: (t: string) => void; onStop: () => void; open: boolean }) {
   const [text, setText] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open) input.current?.focus();
+  }, [open]);
   const submit = () => {
     if (!text.trim() || busy) return;
     onSend(text);
     setText("");
   };
   return (
-    <form className="sheet-foot" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <textarea
-        className="input"
-        value={text}
-        placeholder="Ask about a holding, $TICKER, or a forecast"
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        aria-label="Message"
-      />
-      <div className="spread">
-        <span className="notice">Not financial advice. Answers use your subscription.</span>
-        {busy ? <button type="button" className="btn btn-ghost" onClick={onStop}>Stop</button> : <button className="btn btn-primary" disabled={!text.trim()}>Send</button>}
-      </div>
+    <form className="assist-foot" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <input ref={input} className="input" value={text} placeholder="Ask anything about your stocks…" onChange={(e) => setText(e.target.value)} aria-label="Message" title="Not financial advice. Answers use your subscription." />
+      {busy ? <button type="button" className="btn btn-ghost" onClick={onStop}>Stop</button> : <button className="btn btn-primary" disabled={!text.trim()}>Send</button>}
     </form>
   );
 }
