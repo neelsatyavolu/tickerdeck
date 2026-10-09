@@ -21,14 +21,14 @@ export type SymbolContext = {
 
 export type WatchContext = { symbol: string; name: string | null; price: number | null; prevClose: number | null };
 
-export type DashboardContext = { id: string; name: string; panels: { type: string; title?: string; symbols: string[] }[] };
+export type DashboardContext = { id: string; name: string; panels: (Record<string, unknown> & { type: string; title?: string; symbols: string[] })[] };
 
 export type ContextInput = {
   now: Date;
   portfolios: PortfolioContext[];
   dashboards?: DashboardContext[];
   focusDashboardId?: string;
-  watchlist?: WatchContext[];
+  watchlists?: { name: string; primary: boolean; items: WatchContext[] }[];
   focusPortfolioId?: string;
   symbols: SymbolContext[];
 };
@@ -100,7 +100,7 @@ export function buildSystemPrompt(input: ContextInput): string {
     `You are the research assistant inside tickerdeck, a personal stock and portfolio tracker. Today is ${input.now.toISOString().slice(0, 10)} (${input.now.toISOString()}).`,
     "Answer using the user's data below. Quote numbers from it rather than from memory, and say when something you need is missing. Prices may be a few seconds old.",
     "Be direct and concise. Use short paragraphs or tight bullet lists, and markdown tables only when comparing several items.",
-    "You can analyse, explain and compare, but you cannot change portfolios or the watchlist; tell the user which edits to make themselves. You can propose dashboard panels (see below); the user adds them with one click.",
+    "You can analyse, explain and compare, but you cannot change portfolios or watchlists; tell the user which edits to make themselves. You can propose dashboard panels (see below); the user adds them with one click.",
     "Forecast ranges are statistical spreads from past volatility, not predictions. Do not present anything as a guaranteed outcome. When asked for an outlook, give bull, base and bear cases with the evidence behind each.",
     "",
     "## Portfolios",
@@ -108,20 +108,21 @@ export function buildSystemPrompt(input: ContextInput): string {
       ? input.portfolios.map((p) => portfolioBlock(p, p.portfolio.id === input.focusPortfolioId)).join("\n\n")
       : "The user has no portfolios yet.",
   ];
-  if (input.watchlist?.length) {
-    parts.push(
-      "",
-      "## Watchlist (followed, not held)",
-      ...input.watchlist.map((w) => `- ${w.symbol}${w.name ? ` (${w.name})` : ""}: price ${usd(w.price)} (${pct(w.price !== null && w.prevClose ? w.price / w.prevClose - 1 : null)} today)`),
-    );
+  const lists = (input.watchlists ?? []).filter((l) => l.items.length);
+  if (lists.length) {
+    parts.push("", "## Watchlists (followed, not held)");
+    for (const l of lists) {
+      parts.push(`### ${l.name}${l.primary ? " (primary)" : ""}`);
+      for (const w of l.items) parts.push(`- ${w.symbol}${w.name ? ` (${w.name})` : ""}: price ${usd(w.price)} (${pct(w.price !== null && w.prevClose ? w.price / w.prevClose - 1 : null)} today)`);
+    }
   }
   if (input.symbols.length) parts.push("", "## Symbols in focus", input.symbols.map(symbolBlock).join("\n\n"));
   if (input.dashboards?.length) {
     parts.push("", "## The user's dashboards");
     for (const d of input.dashboards) {
       const open = d.id === input.focusDashboardId;
-      parts.push(`- ${d.name}${open ? " (currently open; panels you propose go here)" : ""}: ${d.panels.length} panels`);
-      if (open) for (const p of d.panels) parts.push(`  - ${p.type}${p.title ? ` "${p.title}"` : ""}${p.symbols.length ? ` ${p.symbols.join(", ")}` : ""}`);
+      parts.push(`- ${d.name}${open ? " (currently open; edits and new panels apply here)" : ""}: ${d.panels.length} panels`);
+      if (open) parts.push("  Current layout (edit this JSON when asked to change the dashboard):", "  " + JSON.stringify({ name: d.name, panels: d.panels }));
     }
   }
   parts.push("", panelGuide());

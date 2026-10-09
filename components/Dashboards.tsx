@@ -14,19 +14,51 @@ type Ctx = {
   update: (id: string, patch: { name?: string; panels?: Panel[] }) => Promise<void>;
   remove: (id: string) => Promise<void>;
   addPanels: (id: string, panels: Panel[]) => Promise<void>;
+  /** The dashboard one-click actions go to: the last one opened or changed. */
+  lastUsedId: string | null;
+  markUsed: (id: string) => void;
 };
 
 const DashboardsCtx = createContext<Ctx | null>(null);
 const saves = createSerialQueue();
 
+const LAST_KEY = "tickerdeck.lastDashboard";
+
+function readLast(): string | null {
+  try {
+    return localStorage.getItem(LAST_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function load(): Promise<Dashboard[] | Error> {
   return client.listDashboards().catch((err) => new Error(err instanceof Error ? err.message : "Could not load dashboards."));
+}
+
+/** Read once after mount (not during render) so server and client markup match. */
+function setLastFromStorage(set: (v: string | null) => void) {
+  set(readLast());
 }
 
 export function DashboardsProvider({ children }: { children: React.ReactNode }) {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [last, setLast] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLastFromStorage(setLast);
+  }, []);
+
+  const markUsed = useCallback((id: string) => {
+    setLast(id);
+    try {
+      localStorage.setItem(LAST_KEY, id);
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
 
   const apply = useCallback((r: Dashboard[] | Error) => {
     if (r instanceof Error) setError(r.message);
@@ -89,7 +121,16 @@ export function DashboardsProvider({ children }: { children: React.ReactNode }) 
     [dashboards, update],
   );
 
-  const value = useMemo(() => ({ dashboards, loading, error, create, update, remove, addPanels }), [dashboards, loading, error, create, update, remove, addPanels]);
+  // Fall back to the most recently updated dashboard when the remembered one is gone.
+  const lastUsedId = useMemo(() => {
+    if (last && dashboards.some((d) => d.id === last)) return last;
+    return [...dashboards].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.id ?? null;
+  }, [last, dashboards]);
+
+  const value = useMemo(
+    () => ({ dashboards, loading, error, create, update, remove, addPanels, lastUsedId, markUsed }),
+    [dashboards, loading, error, create, update, remove, addPanels, lastUsedId, markUsed],
+  );
   return <DashboardsCtx.Provider value={value}>{children}</DashboardsCtx.Provider>;
 }
 

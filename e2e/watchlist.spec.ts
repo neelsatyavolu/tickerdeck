@@ -14,7 +14,7 @@ test("watch symbols without holding them", async ({ page }) => {
 
   await page.getByRole("link", { name: "Watchlist" }).click();
   await expect(page.getByRole("heading", { name: "Watchlist" })).toBeVisible();
-  const add = page.getByPlaceholder("Add a ticker or company");
+  const add = page.getByPlaceholder("Add to Watchlist");
   for (const sym of ["AAPL", "VTSAX"]) {
     await add.fill(sym);
     await page.getByRole("option", { name: new RegExp(`^${sym}\\b`) }).first().click();
@@ -62,7 +62,28 @@ test("watch symbols without holding them", async ({ page }) => {
   await expect(page.getByText("3 symbols")).toBeVisible();
   await expect.poll(order).toEqual(["NVDA", "^GSPC", "VTSAX"]);
 
-  // The assistant opens as a sheet from the bottom and closes with Escape.
+  // Custom lists: create one, add to it from its tab and from a stock page's Watch menu.
+  await page.getByRole("button", { name: "+ New list" }).click();
+  await page.getByLabel("New list name").fill("Chips");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Chips" })).toBeVisible();
+  await page.getByPlaceholder("Add to Chips").fill("AMD");
+  await page.getByRole("option", { name: /^AMD\b/ }).first().click();
+  await expect(page.getByRole("row", { name: /^AMD/ })).toBeVisible();
+  await page.goto("/s/NVDA");
+  await page.getByRole("button", { name: "Add to another watchlist" }).click();
+  await page.getByRole("menuitemcheckbox", { name: /Chips/ }).locator("input").check();
+  await expect(page.getByRole("button", { name: "Add to another watchlist" })).toContainText("+1");
+  await page.goto("/watchlist");
+  await expect(page.getByRole("link", { name: /Chips\s*2/ })).toBeVisible();
+  await page.getByRole("link", { name: /Chips/ }).click();
+  await expect(page.getByRole("row", { name: /^NVDA/ })).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Delete list" }).click();
+  await expect(page.getByRole("link", { name: /Chips/ })).toHaveCount(0);
+  await expect(page.getByText("3 symbols")).toBeVisible(); // primary list untouched
+
+  // The assistant opens as a floating window and closes with Escape.
   await page.getByRole("button", { name: /^Ask AI/ }).click();
   const sheet = page.getByRole("dialog", { name: "AI assistant" });
   await expect(sheet).toBeVisible();

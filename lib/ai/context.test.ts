@@ -48,9 +48,21 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("cannot change portfolios");
   });
 
-  it("lists the watchlist separately from holdings", () => {
-    const prompt = buildSystemPrompt({ now: new Date(), portfolios: [], symbols: [], watchlist: [{ symbol: "VTSAX", name: "Vanguard Total", price: 184.77, prevClose: 185.53 }] });
-    expect(prompt).toContain("## Watchlist (followed, not held)");
+  it("lists each watchlist separately from holdings", () => {
+    const prompt = buildSystemPrompt({
+      now: new Date(),
+      portfolios: [],
+      symbols: [],
+      watchlists: [
+        { name: "Watchlist", primary: true, items: [{ symbol: "VTSAX", name: "Vanguard Total", price: 184.77, prevClose: 185.53 }] },
+        { name: "Chips", primary: false, items: [{ symbol: "AMD", name: null, price: 100, prevClose: 100 }] },
+        { name: "Empty", primary: false, items: [] },
+      ],
+    });
+    expect(prompt).toContain("## Watchlists (followed, not held)");
+    expect(prompt).toContain("### Watchlist (primary)");
+    expect(prompt).toContain("### Chips");
+    expect(prompt).not.toContain("### Empty");
     expect(prompt).toContain("- VTSAX (Vanguard Total): price $184.77 (-0.41% today)");
   });
 

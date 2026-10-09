@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ProposalCard } from "./dashboard/ProposalCard";
-import { extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
+import { DASHBOARD_FENCE, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
 type Provider = "codex" | "grok";
 type Msg = { role: "user" | "assistant"; content: string };
@@ -82,14 +82,14 @@ const MD_COMPONENTS = {
 /** An assistant reply: prose, plus any proposed dashboard panels as action cards. */
 function Reply({ text, dashboardId }: { text: string; dashboardId?: string }) {
   // While streaming, hide a panel block until its closing fence arrives.
-  const open = text.lastIndexOf("```" + PANEL_FENCE);
+  const open = Math.max(text.lastIndexOf("```" + PANEL_FENCE), text.lastIndexOf("```" + DASHBOARD_FENCE));
   const complete = open === -1 || text.indexOf("```", open + 3 + PANEL_FENCE.length) !== -1;
   const { prose, proposals } = extractProposals(complete ? text : text.slice(0, open));
   return (
     <>
       {prose && <Markdown text={prose} />}
       {proposals.map((p, i) => <ProposalCard key={i} proposal={p} defaultDashboardId={dashboardId} />)}
-      {!complete && <div className="notice">Drafting panels<span className="caret" aria-hidden="true" /></div>}
+      {!complete && <div className="notice">Drafting dashboard changes<span className="caret" aria-hidden="true" /></div>}
     </>
   );
 }
@@ -225,6 +225,23 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const connected = status ? (Object.keys(status) as Provider[]).filter((p) => status[p]) : [];
   const focus = focusFromPath(pathname);
   const [expanded, setExpanded] = useState(false);
+
+  // Auto-scroll: follow the conversation as it streams, unless the user has
+  // scrolled up to read something (then leave them where they are).
+  const body = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
+  const onBodyScroll = () => {
+    const el = body.current;
+    if (el) pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  };
+  useEffect(() => {
+    // A new question always jumps to the bottom.
+    if (messages[messages.length - 1]?.role === "user" || messages[messages.length - 1]?.content === "") pinned.current = true;
+  }, [messages]);
+  useEffect(() => {
+    const el = body.current;
+    if (el && pinned.current) el.scrollTop = el.scrollHeight;
+  }, [messages, error, busy]);
   const modelLabel = models?.[provider]?.find((m) => m.id === modelPref[provider])?.label ?? `${PROVIDER_LABEL[provider]} default`;
   const suggestions = [
     focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "How are my portfolios doing today, and what's driving it?",
@@ -273,7 +290,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             <span className="faint" style={{ fontSize: 13, whiteSpace: "nowrap" }}>Default: {PROVIDER_LABEL[provider]}</span>
           </div>
         )}
-        <div className="assist-body">
+        <div className="assist-body" ref={body} onScroll={onBodyScroll} aria-live="polite">
           {status && connected.length === 0 ? (
             <div className="stack">
               <p className="assist-intro">Connect your ChatGPT or Grok subscription to ask about your portfolios, watchlist and dashboards.</p>

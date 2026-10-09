@@ -60,11 +60,18 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "DHT deep dive" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("img", { name: /DHT price/ })).toBeVisible({ timeout: 30_000 });
 
+  // One click from a stock page adds its chart to the last dashboard used.
+  await page.goto("/s/MSFT");
+  await page.getByRole("button", { name: /^Add chart → DHT deep dive/ }).click();
+  await expect(page.getByText("Added.")).toBeVisible();
+  await page.getByRole("link", { name: "Open dashboard" }).click();
+  await expect(page.getByRole("region", { name: "MSFT" })).toBeVisible({ timeout: 30_000 });
+
   // Delete both.
   for (const name of ["DHT deep dive", "Market overview"]) {
     await page.goto("/d");
     await page.getByRole("link", { name: new RegExp(name) }).click();
-    await page.getByRole("button", { name: "Edit layout" }).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Dashboards", exact: true })).toBeVisible();

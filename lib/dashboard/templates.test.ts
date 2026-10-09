@@ -40,6 +40,14 @@ describe("wall layout", () => {
     expect(d.panels.slice(1).every((p) => p.type === "price" && p.width === 3)).toBe(true);
   });
 
+  it("can use a custom watchlist, and 'all' includes every list", () => {
+    const lists = { ...many, watchlists: [{ id: "c1", name: "Chips", symbols: ["AMD", "NVDA"] }] };
+    const chips = buildTemplate("wall", { ...lists, source: "list:c1" });
+    expect(chips.name).toBe("Chips wall");
+    expect(chips.panels.slice(1).map((p) => p.symbols[0])).toEqual(["AMD", "NVDA"]);
+    expect(buildTemplate("wall", { ...lists, source: "all" }).panels.slice(1).map((p) => p.symbols[0])).toContain("AMD");
+  });
+
   it("explains an empty source instead of inventing symbols", () => {
     expect(() => buildTemplate("wall", { portfolios: [], watchlist: [], source: "watchlist" })).toThrow(/watchlist is empty/);
     expect(() => buildTemplate("wall", { portfolios: [], watchlist: [] })).toThrow(/Nothing to show/);

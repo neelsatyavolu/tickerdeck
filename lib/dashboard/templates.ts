@@ -5,9 +5,12 @@ import { newPanelId, panelsSchema, type Panel } from "./schema";
 
 export type TemplateContext = {
   portfolios: { id: string; name: string; symbols: string[] }[];
+  /** The primary watchlist's symbols. */
   watchlist: string[];
+  /** Custom watchlists. */
+  watchlists?: { id: string; name: string; symbols: string[] }[];
   symbol?: string;
-  /** For the wall: "all", "watchlist", or a portfolio id. */
+  /** For the wall: "all", "watchlist" (primary), "list:<id>", or a portfolio id. */
   source?: string;
 };
 
@@ -23,14 +26,19 @@ type Template = {
 const WALL_MAX_CHARTS = 39; // plus the heatmap = the 40-panel limit
 
 /** Symbols for the wall: one portfolio, the watchlist, or everything (holdings first). */
-export function wallSymbols({ portfolios, watchlist, source = "all" }: TemplateContext): string[] {
+export function wallSymbols({ portfolios, watchlist, watchlists = [], source = "all" }: TemplateContext): string[] {
   const fromPortfolios = (ps: TemplateContext["portfolios"]) => ps.flatMap((p) => p.symbols);
-  const list = source === "watchlist" ? watchlist : source === "all" ? [...fromPortfolios(portfolios), ...watchlist] : fromPortfolios(portfolios.filter((p) => p.id === source));
+  let list: string[];
+  if (source === "watchlist") list = watchlist;
+  else if (source.startsWith("list:")) list = watchlists.find((l) => `list:${l.id}` === source)?.symbols ?? [];
+  else if (source === "all") list = [...fromPortfolios(portfolios), ...watchlist, ...watchlists.flatMap((l) => l.symbols)];
+  else list = fromPortfolios(portfolios.filter((p) => p.id === source));
   return [...new Set(list)];
 }
 
-function wallName({ portfolios, source = "all" }: TemplateContext): string {
+function wallName({ portfolios, watchlists = [], source = "all" }: TemplateContext): string {
   if (source === "watchlist") return "Watchlist wall";
+  if (source.startsWith("list:")) return `${watchlists.find((l) => `list:${l.id}` === source)?.name ?? "List"} wall`;
   if (source === "all") return "Everything wall";
   return `${portfolios.find((p) => p.id === source)?.name ?? "Portfolio"} wall`;
 }

@@ -12,13 +12,13 @@ import { useWatchlist } from "@/components/Watchlist";
 import { PANEL_META } from "@/lib/dashboard/schema";
 import { buildTemplate, TEMPLATES } from "@/lib/dashboard/templates";
 import { listPortfolios } from "@/lib/client/portfolios";
-import { listWatchlist } from "@/lib/client/watchlist";
+import { listWatchlists } from "@/lib/client/watchlist";
 import { timeAgo } from "@/lib/format";
 
 export default function DashboardsPage() {
   const { dashboards, loading, error, create } = useDashboards();
   const { portfolios } = usePortfolios();
-  const { items: watchlist } = useWatchlist();
+  const { lists } = useWatchlist();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -40,10 +40,12 @@ export default function DashboardsPage() {
   const fromTemplate = (id: string, symbol?: string, source?: string) =>
     start(id, async () => {
       // Read the latest portfolios and watchlist, in case they changed in another tab.
-      const [freshPortfolios, freshWatchlist] = await Promise.all([listPortfolios().catch(() => portfolios), listWatchlist().catch(() => watchlist)]);
+      const [freshPortfolios, freshLists] = await Promise.all([listPortfolios().catch(() => portfolios), listWatchlists().catch(() => lists)]);
+      const freshPrimary = freshLists.find((l) => l.is_primary)?.items ?? [];
       const t = buildTemplate(id, {
         portfolios: freshPortfolios.map((p) => ({ id: p.id, name: p.name, symbols: [...new Set(p.holdings.filter((h) => h.shares > 0).map((h) => h.symbol))] })),
-        watchlist: freshWatchlist.map((w) => w.symbol),
+        watchlist: freshPrimary.map((w) => w.symbol),
+        watchlists: freshLists.filter((l) => !l.is_primary).map((l) => ({ id: l.id, name: l.name, symbols: l.items.map((i) => i.symbol) })),
         symbol,
         source,
       });
@@ -82,8 +84,8 @@ export default function DashboardsPage() {
               {t.needsSource ? (
                 <div className="row">
                   <select className="input" value={wallSource} onChange={(e) => setWallSource(e.target.value)} aria-label="Symbols for the wall">
-                    <option value="all">All holdings + watchlist</option>
-                    <option value="watchlist">Watchlist</option>
+                    <option value="all">All holdings + watchlists</option>
+                    {lists.map((l) => <option key={l.id} value={l.is_primary ? "watchlist" : `list:${l.id}`}>{l.is_primary ? "Watchlist" : `List: ${l.name}`}</option>)}
                     {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                   <button className="btn btn-primary" disabled={busy !== null} onClick={() => fromTemplate(t.id, undefined, wallSource)}>{busy === t.id ? "Creating" : "Create"}</button>

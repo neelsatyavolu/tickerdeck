@@ -11,12 +11,13 @@ import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { ErrorText } from "@/components/ui";
 import { PANEL_META, PANEL_WIDTHS, type Panel } from "@/lib/dashboard/schema";
+import { isTidy, tidyLayout } from "@/lib/dashboard/tidy";
 import { moveItem } from "@/lib/reorder";
 
 export default function DashboardPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { dashboards, loading, update, remove } = useDashboards();
+  const { dashboards, loading, update, remove, markUsed } = useDashboards();
   const { ask } = useAssistant();
   const dashboard = dashboards.find((d) => d.id === id);
   const [editing, setEditing] = useState(false);
@@ -34,6 +35,12 @@ export default function DashboardPage() {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  // Opening a dashboard makes it the target for one-click "Add to dashboard".
+  const exists = Boolean(dashboard);
+  useEffect(() => {
+    if (exists) markUsed(id);
+  }, [exists, id, markUsed]);
 
   const enterFullscreen = () => {
     wall.current?.requestFullscreen?.().catch(() => setError("Your browser blocked full screen."));
@@ -97,34 +104,37 @@ export default function DashboardPage() {
 
   return (
     <PageGate key={id} title={dashboard?.name ?? "dashboard"} steps={steps}>
-      <div className="spread">
+      <div className="dash-head">
         <div style={{ minWidth: 0 }}>
-          <div className="label"><Link href="/d">Dashboards</Link> · {panels.length} panel{panels.length === 1 ? "" : "s"}</div>
+          <div className="label"><Link href="/d">Dashboards</Link></div>
           {renaming !== null ? (
-            <form onSubmit={(e) => { e.preventDefault(); onRename(); }} style={{ marginTop: 8 }}>
+            <form onSubmit={(e) => { e.preventDefault(); onRename(); }} style={{ marginTop: 6 }}>
               <input className="input display" style={{ fontSize: 28, width: "min(560px, 100%)" }} value={renaming} maxLength={80} autoFocus onChange={(e) => setRenaming(e.target.value)} onBlur={onRename} aria-label="Dashboard name" />
             </form>
           ) : (
-            <h1 className="display" style={{ marginTop: 8 }}>{dashboard?.name}</h1>
+            <h1 className="display" style={{ marginTop: 6 }}>{dashboard?.name}</h1>
           )}
         </div>
-        <div className="row">
-          <button className="btn btn-ghost" onClick={() => ask("Suggest a few useful panels to add to this dashboard, based on my holdings and watchlist.", { dashboardId: id })}>Ask AI for panels</button>
-          {editing ? (
-            <>
-              <button className="btn-text" onClick={() => setRenaming(dashboard?.name ?? "")}>Rename</button>
-              <button className="btn-text danger" onClick={onDelete}>Delete</button>
-              <button className="btn btn-primary" onClick={() => { setEditing(false); setAdding(false); setEditingPanel(null); }}>Done</button>
-            </>
-          ) : (
-            <>
-              {panels.length > 0 && <button className="btn btn-ghost" onClick={enterFullscreen}>Full screen</button>}
-              <button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit layout</button>
-            </>
-          )}
-          {!adding && <button className="btn btn-primary" onClick={() => { setAdding(true); setEditing(true); }}>Add panel</button>}
-        </div>
+        {!editing && (
+          <div className="row" style={{ gap: 4 }}>
+            {panels.length > 0 && <button className="btn-text" onClick={enterFullscreen}>Full screen</button>}
+            <button className="btn-text" onClick={() => setEditing(true)}>Edit</button>
+            <button className="btn btn-primary" onClick={() => { setAdding(true); setEditing(true); }}>+ Add panel</button>
+          </div>
+        )}
       </div>
+      {editing && (
+        <div className="dash-toolbar" role="toolbar" aria-label="Edit dashboard">
+          <span className="label">Editing</span>
+          <span className="faint" style={{ fontSize: 13 }}>Drag panels, or use ← → to move and − + to resize. Changes save automatically.</span>
+          <span style={{ flex: 1 }} />
+          {!adding && <button className="btn-text" onClick={() => setAdding(true)}>+ Add panel</button>}
+          <button className="btn-text" onClick={() => setRenaming(dashboard?.name ?? "")}>Rename</button>
+          {!isTidy(panels) && <button className="btn-text" onClick={() => save(tidyLayout(panels))} title="Resize panels so every row fills the width">Tidy layout</button>}
+          <button className="btn-text danger" onClick={onDelete}>Delete</button>
+          <button className="btn btn-primary" style={{ padding: "4px 12px" }} onClick={() => { setEditing(false); setAdding(false); setEditingPanel(null); }}>Done</button>
+        </div>
+      )}
       <ErrorText error={error} />
 
       {adding && (
@@ -191,7 +201,6 @@ export default function DashboardPage() {
         </div>
         </div>
       )}
-      {editing && panels.length > 0 && <p className="notice" style={{ marginTop: 12 }}>Drag panels to rearrange, or use ← → to move and − + to resize. Changes save automatically.</p>}
     </PageGate>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
@@ -55,8 +56,15 @@ function RangeCell({ symbol, low, high, price }: { symbol: string; low: number |
   );
 }
 
-export default function WatchlistPage() {
-  const { items, loading, error, add, remove, reorder } = useWatchlist();
+function WatchlistView() {
+  const { lists, primary, loading, error, add, remove, reorder, createList, renameList, deleteList } = useWatchlist();
+  const params = useSearchParams();
+  const router = useRouter();
+  const active = lists.find((l) => l.id === params.get("list")) ?? primary;
+  const items = useMemo(() => active?.items ?? [], [active]);
+  const listId = active?.id;
+  const [creating, setCreating] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const symbols = useMemo(() => items.map((i) => i.symbol), [items]);
   const { prices, checked } = useLivePrices(symbols);
   const { map: overviews, ready: overviewsReady } = useOverviews(symbols);
@@ -110,7 +118,7 @@ export default function WatchlistPage() {
     if (from === to) return;
     setActionError(null);
     try {
-      await reorder(moveItem(items.map((i) => i.symbol), from, to));
+      await reorder(moveItem(items.map((i) => i.symbol), from, to), listId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't save the new order.");
     }
@@ -127,11 +135,45 @@ export default function WatchlistPage() {
     { label: "Trends and returns", done: !loading && overviewsReady },
   ];
 
+  const onCreateList = async () => {
+    const name = creating?.trim();
+    if (!name) return;
+    setActionError(null);
+    try {
+      const id = await createList(name);
+      setCreating(null);
+      router.push(`/watchlist?list=${id}`);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't create the list.");
+    }
+  };
+
+  const onRenameList = async () => {
+    const name = renaming?.trim();
+    setRenaming(null);
+    if (!active || !name || name === active.name) return;
+    try {
+      await renameList(active.id, name);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't rename the list.");
+    }
+  };
+
+  const onDeleteList = async () => {
+    if (!active || active.is_primary || !window.confirm(`Delete the "${active.name}" list?`)) return;
+    try {
+      await deleteList(active.id);
+      router.push("/watchlist");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't delete the list.");
+    }
+  };
+
   const onAdd = async (symbol: string, name?: string) => {
     if (!symbol) return;
     setActionError(null);
     try {
-      await add(symbol, name);
+      await add(symbol, name, listId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't add that symbol.");
     }
@@ -140,21 +182,52 @@ export default function WatchlistPage() {
   const onRemove = async (symbol: string) => {
     setActionError(null);
     try {
-      await remove(symbol);
+      await remove(symbol, listId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't remove that symbol.");
     }
   };
 
   return (
-    <PageGate title="watchlist" steps={steps}>
+    <PageGate title="watchlists" steps={steps}>
       <div className="spread">
-        <div>
-          <div className="label">{items.length} symbol{items.length === 1 ? "" : "s"}</div>
-          <h1 className="display" style={{ marginTop: 8 }}>Watchlist</h1>
+        <div style={{ minWidth: 0 }}>
+          <div className="label">{items.length} symbol{items.length === 1 ? "" : "s"}{active && !active.is_primary ? " · custom list" : ""}</div>
+          {renaming !== null && active ? (
+            <form onSubmit={(e) => { e.preventDefault(); onRenameList(); }} style={{ marginTop: 6 }}>
+              <input className="input display" style={{ fontSize: 28, width: "min(480px, 100%)" }} value={renaming} maxLength={60} autoFocus onChange={(e) => setRenaming(e.target.value)} onBlur={onRenameList} aria-label="List name" />
+            </form>
+          ) : (
+            <h1 className="display" style={{ marginTop: 8 }}>{active?.name ?? "Watchlist"}</h1>
+          )}
         </div>
-        <SymbolSearch placeholder="Add a ticker or company" onSelect={onAdd} width={280} />
+        <div className="row">
+          {active && !active.is_primary && renaming === null && (
+            <>
+              <button className="btn-text" onClick={() => setRenaming(active.name)}>Rename</button>
+              <button className="btn-text danger" onClick={onDeleteList}>Delete list</button>
+            </>
+          )}
+          <SymbolSearch placeholder={`Add to ${active?.name ?? "watchlist"}`} onSelect={onAdd} width={280} />
+        </div>
       </div>
+
+      <nav className="list-tabs" aria-label="Watchlists" style={{ marginTop: 16 }}>
+        {lists.map((l) => (
+          <Link key={l.id} className="list-tab" href={l.is_primary ? "/watchlist" : `/watchlist?list=${l.id}`} aria-current={l.id === listId ? "page" : undefined}>
+            {l.name}<span className="count">{l.items.length}</span>
+          </Link>
+        ))}
+        {creating === null ? (
+          <button className="list-tab btn-text" style={{ textTransform: "uppercase" }} onClick={() => setCreating("")}>+ New list</button>
+        ) : (
+          <form className="row" style={{ gap: 6, padding: "4px 8px" }} onSubmit={(e) => { e.preventDefault(); onCreateList(); }}>
+            <input className="input" style={{ padding: "4px 8px", fontSize: 13 }} placeholder="List name" value={creating} maxLength={60} autoFocus onChange={(e) => setCreating(e.target.value)} aria-label="New list name" />
+            <button className="btn-text" disabled={!creating.trim()}>Create</button>
+            <button type="button" className="btn-text" onClick={() => setCreating(null)}>Cancel</button>
+          </form>
+        )}
+      </nav>
       <ErrorText error={error ?? actionError} />
 
       {INDEXES.some((i) => !items.some((w) => w.symbol === i.symbol)) && (
@@ -256,5 +329,13 @@ export default function WatchlistPage() {
         {!custom && <button className="btn-text" onClick={() => setSort({ key: "custom", desc: false })}>My order</button>}
       </div>
     </PageGate>
+  );
+}
+
+export default function WatchlistPage() {
+  return (
+    <Suspense>
+      <WatchlistView />
+    </Suspense>
   );
 }
