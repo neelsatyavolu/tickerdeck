@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 // Imports a Yahoo Finance export into a new portfolio, checks the result,
 // then deletes the portfolio. Same environment needs as flow.spec.ts.
 
 test.skip(!process.env.E2E_BASE_URL && !process.env.NEON_AUTH_BASE_URL, "Set E2E_BASE_URL or the Neon env");
 
-const fixture = fileURLToPath(new URL("./fixtures/yahoo-quotes.csv", import.meta.url));
+const fixture = path.join(__dirname, "fixtures", "yahoo-quotes.csv");
 
 test("import a Yahoo Finance CSV into a new portfolio", async ({ page }) => {
   await page.goto("/login");
@@ -27,7 +27,7 @@ test("import a Yahoo Finance CSV into a new portfolio", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "E2E Yahoo Import" })).toBeVisible();
   for (const sym of ["AAPL", "BRK.B", "SPY", "NVDA"]) {
-    await expect(page.getByRole("row", { name: new RegExp(`^\\+ ${sym.replace(".", "\\.")}\\b`) })).toBeVisible();
+    await expect(page.getByRole("row", { name: new RegExp(`^Show ${sym.replace(".", "\\.")} lots`) })).toBeVisible();
   }
   // Two AAPL lots merge into one 12.5-share position at a blended cost.
   await expect(page.getByRole("row", { name: /AAPL/ }).first()).toContainText("12.5");
