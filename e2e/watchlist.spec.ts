@@ -34,7 +34,7 @@ test("watch symbols without holding them", async ({ page }) => {
   await page.getByRole("button", { name: "+ S&P 500" }).click();
   const spx = page.getByRole("row", { name: /^\^GSPC/ });
   await expect(spx).toBeVisible();
-  await expect(spx).toContainText("$");
+  await expect(spx).toContainText(/\d{1,3}(,\d{3})+\.\d{2}/); // a level in points
   await page.getByRole("link", { name: "^GSPC", exact: true }).click();
   await expect(page.getByRole("heading", { name: "^GSPC", exact: true })).toBeVisible();
   await expect(page.getByText(/Market index/)).toBeVisible();

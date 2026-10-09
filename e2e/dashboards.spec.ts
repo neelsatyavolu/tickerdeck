@@ -20,7 +20,7 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Market overview" })).toBeVisible({ timeout: 30_000 });
   const indexes = page.getByRole("region", { name: "Indexes", exact: true });
   await expect(indexes).toContainText("^GSPC");
-  await expect(indexes).toContainText("$");
+  await expect(indexes).toContainText(/\d{1,3}(,\d{3})+\.\d{2}/); // index levels are points, not dollars
   await expect(page.getByRole("img", { name: /^Change since/ })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Mega caps today" }).getByRole("listitem").first()).toBeVisible();
   await expect(page.getByRole("region", { name: "Market news" }).locator("article").first()).toBeVisible({ timeout: 30_000 });
