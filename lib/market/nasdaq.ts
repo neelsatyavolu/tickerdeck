@@ -146,7 +146,17 @@ export type NasdaqSummary = {
   exDividendDate: string | null;
   dividendYield: number | null;
   marketCap: number | null;
+  volume: number | null;
+  avgVolume: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
 };
+
+/** "$341.57/$335.9" → high and low. */
+function dayRange(v: string | null): { dayHigh: number | null; dayLow: number | null } {
+  const [hi, lo] = (v ?? "").split("/").map((x) => parseNum(x));
+  return { dayHigh: hi ?? null, dayLow: lo ?? null };
+}
 
 export function parseSummary(info: RawInfo | null, summary: RawSummary | null, cls: AssetClass): NasdaqSummary {
   const d = summary?.summaryData ?? {};
@@ -164,6 +174,9 @@ export function parseSummary(info: RawInfo | null, summary: RawSummary | null, c
     exDividendDate: text("ExDividendDate"),
     dividendYield: parseNum(text("Yield")) === null ? null : (parseNum(text("Yield")) as number) / 100,
     marketCap: parseNum(text("MarketCap")),
+    volume: parseNum(text("ShareVolume")),
+    avgVolume: parseNum(text("AverageVolume")) ?? parseNum(text("FiftyDayAvgDailyVol")),
+    ...dayRange(text("TodayHighLow")),
   };
 }
 

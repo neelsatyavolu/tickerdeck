@@ -7,7 +7,8 @@ import { Sparkline } from "@/components/charts/Sparkline";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { SymbolSearch } from "@/components/SymbolSearch";
-import { ErrorText } from "@/components/ui";
+import { FundamentalsTable } from "@/components/FundamentalsTable";
+import { ErrorText, Seg } from "@/components/ui";
 import { useOverviews } from "@/components/useOverviews";
 import { useWatchlist } from "@/components/Watchlist";
 import { prefetchStock } from "@/lib/client/prefetch";
@@ -56,6 +57,8 @@ function RangeCell({ symbol, low, high, price }: { symbol: string; low: number |
   );
 }
 
+const VIEWS = ["Performance", "Fundamentals"] as const;
+
 function WatchlistView() {
   const { lists, primary, loading, error, add, remove, reorder, createList, renameList, deleteList } = useWatchlist();
   const params = useSearchParams();
@@ -64,6 +67,7 @@ function WatchlistView() {
   const items = useMemo(() => active?.items ?? [], [active]);
   const listId = active?.id;
   const [creating, setCreating] = useState<string | null>(null);
+  const [view, setView] = useState<(typeof VIEWS)[number]>("Performance");
   const [renaming, setRenaming] = useState<string | null>(null);
   const symbols = useMemo(() => items.map((i) => i.symbol), [items]);
   const { prices, checked } = useLivePrices(symbols);
@@ -241,12 +245,21 @@ function WatchlistView() {
         </div>
       )}
 
+      {items.length > 0 && (
+        <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
+          <Seg label="Table view" value={view} options={VIEWS} onChange={setView} />
+        </div>
+      )}
       {items.length === 0 ? (
         <div className="empty" style={{ marginTop: 24 }}>
           <p>Follow stocks, ETFs and funds without holding them. Add one with the box above, or press Watch on any stock page.</p>
         </div>
+      ) : view === "Fundamentals" ? (
+        <div style={{ marginTop: 12 }}>
+          <FundamentalsTable symbols={items.map((i) => i.symbol)} />
+        </div>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 24 }}>
+        <div className="table-wrap" style={{ marginTop: 12 }}>
           <table className="data">
             <thead>
               <tr>

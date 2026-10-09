@@ -1,6 +1,6 @@
 import { panelGuide } from "../dashboard/aiPanels";
 import type { Forecast } from "../forecast/montecarlo";
-import type { AnalystTargets, NewsItem, Profile, QuoteSnapshot, Recommendation } from "../market/types";
+import type { AnalystTargets, EarningsPoint, KeyStats, NewsItem, Profile, QuoteSnapshot, Recommendation } from "../market/types";
 import type { Position, Totals } from "../portfolio/math";
 import type { Portfolio } from "../portfolio/types";
 
@@ -17,6 +17,9 @@ export type SymbolContext = {
   recommendations: Recommendation[];
   news: NewsItem[];
   forecast: (Forecast & { horizonLabel: string }) | null;
+  stats?: KeyStats | null;
+  earnings?: EarningsPoint[];
+  returns?: { label: string; value: number | null }[];
 };
 
 export type WatchContext = { symbol: string; name: string | null; price: number | null; prevClose: number | null };
@@ -75,10 +78,32 @@ function portfolioBlock({ portfolio, positions, totals }: PortfolioContext, focu
   return [...header, ...rows].join("\n");
 }
 
+const num = (n: number | null | undefined, d = 2) => (n === null || n === undefined || !Number.isFinite(n) ? "n/a" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
+const shares = (n: number | null | undefined) => (n === null || n === undefined ? "n/a" : `${(n / 1e6).toFixed(2)}M shares`);
+const frac = (n: number | null | undefined) => (n === null || n === undefined ? "n/a" : `${(n * 100).toFixed(1)}%`);
+
+/** Key statistics, labelled plainly so the model can quote them. */
+export function statsLines(st: KeyStats, symbol: string): string[] {
+  const money = (n: number | null | undefined) => (symbol.startsWith("^") ? num(n) : usd(n));
+  return [
+    `exchange ${st.exchange ?? (symbol.startsWith("^") ? "index (not traded)" : "n/a")}`,
+    `volume today ${shares(st.volume)} · average daily volume ${shares(st.avgVolume ?? st.avgVolume10d)} · day range ${money(st.dayLow)} – ${money(st.dayHigh)} · 52-week range ${money(st.low52)} – ${money(st.high52)}`,
+    `market cap ${st.marketCap ? `$${(st.marketCap / 1e9).toFixed(1)}B` : "n/a"} · P/E (TTM) ${num(st.peTTM, 1)} · EPS (TTM) ${usd(st.epsTTM)} · PEG ${num(st.pegTTM)} · P/S ${num(st.psTTM, 1)} · P/B ${num(st.pb, 1)} · beta ${num(st.beta)}`,
+    `dividend yield ${frac(st.dividendYield)} · annual dividend ${usd(st.annualDividend)} · ex-dividend ${st.exDividendDate ?? "n/a"}`,
+    `gross margin ${frac(st.grossMargin)} · operating margin ${frac(st.operatingMargin)} · net margin ${frac(st.netMargin)} · ROE ${frac(st.roe)} · revenue growth YoY ${frac(st.revenueGrowthYoy)} · EPS growth YoY ${frac(st.epsGrowthYoy)} · debt/equity ${num(st.debtToEquity)}`,
+    `YTD return ${frac(st.ytdReturn)} · YTD vs S&P 500 ${frac(st.relativeToSP500Ytd)}${st.sector ? ` · sector ${st.sector}` : ""}${st.industry ? ` · industry ${st.industry}` : ""}`,
+  ];
+}
+
 function symbolBlock(s: SymbolContext): string {
   const lines = [`### ${s.symbol}${s.profile ? ` — ${s.profile.name}` : ""}`];
   if (s.profile) lines.push(`industry ${s.profile.industry ?? "n/a"} · market cap ${s.profile.marketCap ? usd(s.profile.marketCap / 1e9, 1) + "B" : "n/a"}`);
-  if (s.quote) lines.push(`price ${usd(s.quote.price)} · prev close ${usd(s.quote.prevClose)} (${pct((s.quote.price - s.quote.prevClose) / s.quote.prevClose)}) · as of ${new Date(s.quote.time).toISOString()}`);
+  const px = (n: number | null | undefined) => (s.symbol.startsWith("^") ? num(n) : usd(n));
+  if (s.quote) lines.push(`price ${px(s.quote.price)} · prev close ${px(s.quote.prevClose)} (${pct((s.quote.price - s.quote.prevClose) / s.quote.prevClose)}) · as of ${new Date(s.quote.time).toISOString()}`);
+  if (s.stats) lines.push(...statsLines(s.stats, s.symbol));
+  if (s.returns?.length) lines.push(`returns: ${s.returns.map((r) => `${r.label} ${pct(r.value)}`).join(" · ")}`);
+  const e = s.earnings?.at(-1);
+  if (e) lines.push(`latest earnings (${e.period}): EPS ${usd(e.actual)} vs estimate ${usd(e.estimate)}${e.surprisePercent !== null ? ` (${e.surprisePercent >= 0 ? "beat" : "miss"} ${Math.abs(e.surprisePercent).toFixed(1)}%)` : ""}`);
   if (s.targets) lines.push(`analyst targets: low ${usd(s.targets.low)} · mean ${usd(s.targets.mean)} · high ${usd(s.targets.high)} · ${s.targets.analysts ?? "?"} analysts · consensus ${s.targets.rating ?? "n/a"}`);
   const r = s.recommendations[0];
   if (r) lines.push(`ratings (${r.period}): strong buy ${r.strongBuy}, buy ${r.buy}, hold ${r.hold}, sell ${r.sell}, strong sell ${r.strongSell}`);

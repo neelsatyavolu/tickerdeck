@@ -7,6 +7,7 @@ import { CompareChart } from "@/components/charts/CompareChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { ForecastPanel } from "@/components/ForecastPanel";
+import { FundamentalsTable } from "@/components/FundamentalsTable";
 import { useLivePrices } from "@/components/LivePrices";
 import { usePortfolios } from "@/components/Portfolios";
 import { KeyStatsGrid } from "@/components/StockPanels";
@@ -250,5 +251,6 @@ export function PanelView({ panel }: { panel: Panel }) {
     case "analysts": return <AnalystsView panel={panel} />;
     case "news": return <NewsView panel={panel} />;
     case "portfolio": return <PortfolioView panel={panel} />;
+    case "lookup": return <FundamentalsTable symbols={panel.symbols} />;
   }
 }

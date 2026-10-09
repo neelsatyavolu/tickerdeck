@@ -67,12 +67,16 @@ describe("parseSummary", () => {
           Yield: { label: "", value: "0.32%" },
           MarketCap: { label: "", value: "4,968,150,755,600" },
           ExDividendDate: { label: "", value: "N/A" },
+          ShareVolume: { label: "", value: "35,317,997.938384" },
+          AverageVolume: { label: "", value: "44,155,968" },
+          TodayHighLow: { label: "", value: "$341.57/$335.9" },
         },
       },
       "stocks",
     );
     expect(s).toMatchObject({ name: "Apple Inc.", exchange: "NASDAQ-GS", sector: "Technology", annualDividend: 1.08, marketCap: 4968150755600, exDividendDate: null });
     expect(s.dividendYield).toBeCloseTo(0.0032);
+    expect(s).toMatchObject({ volume: 35317997.938384, avgVolume: 44155968, dayHigh: 341.57, dayLow: 335.9 });
   });
 });
 

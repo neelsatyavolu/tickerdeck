@@ -49,6 +49,9 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
   // Funds have no company financials; hide the cells that would all be blank.
   const isFund = stats.assetClass === "etf" || stats.assetClass === "mutualfunds";
   const cells: [string, React.ReactNode][] = [
+    ["Volume today", count(stats.volume)],
+    ["Avg volume", count(stats.avgVolume ?? stats.avgVolume10d)],
+    ["Day range", stats.dayLow !== null && stats.dayHigh !== null ? `${usd(stats.dayLow)} – ${usd(stats.dayHigh)}` : "—"],
     ["Market cap", big(stats.marketCap)],
     ["P/E (TTM)", num(stats.peTTM, 1)],
     ["EPS (TTM)", stats.epsTTM === null ? "—" : usd(stats.epsTTM)],
@@ -56,7 +59,6 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
     ["P/S (TTM)", num(stats.psTTM, 1)],
     ["P/B", num(stats.pb, 1)],
     ["Beta", num(stats.beta, 2)],
-    ["Avg volume (10d)", count(stats.avgVolume10d)],
     ["Dividend yield", plainPct(stats.dividendYield, 2)],
     ["Annual dividend", stats.annualDividend === null ? "—" : usd(stats.annualDividend)],
     ["Ex-dividend", stats.exDividendDate ?? "—"],

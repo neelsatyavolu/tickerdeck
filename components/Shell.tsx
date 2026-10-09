@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { loadListings } from "@/lib/client/symbolIndex";
 import { usePathname, useRouter } from "next/navigation";
 import { AssistantProvider } from "./Assistant";
 import { LivePricesProvider } from "./LivePrices";
@@ -13,6 +15,12 @@ import { FeedBadge } from "./ui";
 function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Warm the search index in the background so the first search is instant.
+  useEffect(() => {
+    const t = setTimeout(() => loadListings().catch(() => {}), 1500);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <header className="topbar">
       <div className="topbar-inner">

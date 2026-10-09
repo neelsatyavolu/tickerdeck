@@ -1,7 +1,11 @@
 import "server-only";
 import { forecastExposures } from "../forecast/service";
-import { news, profile, recommendations } from "../market/finnhub";
-import { analystTargets, quote, quotes } from "../market/sources";
+import { earnings, metrics, news, profile, recommendations } from "../market/finnhub";
+import { summary } from "../market/nasdaq";
+import { buildKeyStats } from "../market/stats";
+import { analystTargets, history, quote, quotes } from "../market/sources";
+import { namedSymbols } from "../market/companyNames";
+import { periodReturns } from "../market/performance";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "../portfolio/math";
 import { listPortfolios } from "../portfolio/repo";
 import { listWatchlists } from "../watchlist/repo";
@@ -10,29 +14,39 @@ import type { Quote } from "../portfolio/types";
 import { mentionedSymbols, type ContextInput, type SymbolContext } from "./context";
 
 const MAX_PORTFOLIO_SYMBOLS = 40;
-const MAX_FOCUS_SYMBOLS = 4;
+const MAX_FOCUS_SYMBOLS = 12;
+const DETAILED_SYMBOLS = 3; // the rest get quote, key stats and returns only
 const FOCUS_HORIZON = "3m" as const;
 
 const orNull = <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-async function symbolContext(symbol: string): Promise<SymbolContext | null> {
+async function symbolContext(symbol: string, detailed: boolean): Promise<SymbolContext | null> {
   const q = await orNull(quote(symbol));
   if (!q) return null; // not a real ticker (e.g. an acronym we didn't filter)
-  const [p, targets, recs, headlines, forecast] = await Promise.all([
+  const [m, sum, hist] = await Promise.all([orNull(metrics(symbol)), orNull(summary(symbol)), orNull(history(symbol, "10y"))]);
+  const base = {
+    symbol,
+    quote: q,
+    stats: m || sum ? buildKeyStats(m ?? {}, sum) : null,
+    returns: hist ? periodReturns(hist, q.price) : [],
+  };
+  if (!detailed) return { ...base, profile: null, targets: null, recommendations: [], news: [], forecast: null, earnings: [] };
+  const [p, targets, recs, headlines, forecast, earn] = await Promise.all([
     orNull(profile(symbol)),
     orNull(analystTargets(symbol).then((r) => r?.targets ?? null)),
     orNull(recommendations(symbol)),
     orNull(news(symbol, 7)),
     orNull(forecastExposures([{ symbol, value: q.price }], FOCUS_HORIZON)),
+    orNull(earnings(symbol)),
   ]);
   return {
-    symbol,
-    quote: q,
+    ...base,
     profile: p,
     targets,
     recommendations: recs ?? [],
     news: headlines ?? [],
     forecast: forecast ? { ...forecast, horizonLabel: "3 months" } : null,
+    earnings: earn ?? [],
   };
 }
 
@@ -57,8 +71,9 @@ export async function gatherContext(
 
   // Detail for the open stock, tickers named in the question, and the open portfolio's largest positions.
   const largest = contexts.find((c) => c.portfolio.id === opts.focusPortfolioId)?.positions.slice(0, 3).map((p) => p.symbol) ?? [];
-  const focus = [...new Set([opts.focusSymbol, ...mentionedSymbols(opts.lastUserMessage), ...largest].filter((s): s is string => Boolean(s)))].slice(0, MAX_FOCUS_SYMBOLS);
-  const symbolContexts = (await Promise.all(focus.map(symbolContext))).filter((s): s is SymbolContext => s !== null);
+  const text = opts.lastUserMessage;
+  const focus = [...new Set([opts.focusSymbol, ...namedSymbols(text), ...mentionedSymbols(text, MAX_FOCUS_SYMBOLS), ...largest].filter((s): s is string => Boolean(s)))].slice(0, MAX_FOCUS_SYMBOLS);
+  const symbolContexts = (await Promise.all(focus.map((s, i) => symbolContext(s, i < DETAILED_SYMBOLS)))).filter((s): s is SymbolContext => s !== null);
 
   return {
     now: new Date(),

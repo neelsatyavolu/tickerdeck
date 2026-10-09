@@ -59,7 +59,7 @@ describe("diffLayouts", () => {
 describe("panelGuide", () => {
   it("covers every panel type, both blocks and the layout rules", () => {
     const guide = panelGuide();
-    for (const t of ["tiles", "price", "compare", "heatmap", "returns", "movers", "forecast", "stats", "analysts", "news", "portfolio"]) expect(guide).toContain(`- ${t}:`);
+    for (const t of ["tiles", "price", "compare", "heatmap", "returns", "movers", "forecast", "stats", "analysts", "news", "portfolio", "lookup"]) expect(guide).toContain(`- ${t}:`);
     expect(guide).toContain("```tickerdeck-dashboard");
     expect(guide).toContain("add up to exactly 12");
   });

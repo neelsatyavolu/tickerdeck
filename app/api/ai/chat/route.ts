@@ -22,7 +22,8 @@ export function POST(req: Request) {
     const tokens = await getActiveSession(provider, user.id);
     if (!tokens) return fail(`Connect ${PROVIDERS[provider].label} in Settings first.`, 409);
 
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    // Newest first, so a follow-up like "does it pay a dividend?" still finds the ticker named earlier.
+    const lastUser = messages.filter((m) => m.role === "user").slice(-4).reverse().map((m) => m.content).join("\n");
     const context = await gatherContext(user.id, {
       lastUserMessage: lastUser,
       focusPortfolioId: focus?.portfolioId,

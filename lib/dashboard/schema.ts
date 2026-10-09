@@ -16,6 +16,7 @@ export const PANEL_TYPES = [
   "analysts",
   "news",
   "portfolio",
+  "lookup",
 ] as const;
 export type PanelType = (typeof PANEL_TYPES)[number];
 
@@ -39,6 +40,7 @@ export const PANEL_META: Record<PanelType, Meta> = {
   analysts: { label: "Analysts", description: "Price-target range and buy/hold/sell counts.", minSymbols: 1, maxSymbols: 1, width: 4 },
   news: { label: "News", description: "Recent headlines for a symbol (an index gives market news).", minSymbols: 1, maxSymbols: 1, width: 4 },
   portfolio: { label: "Portfolio", description: "Value, today, total gain and allocation of one of your portfolios.", minSymbols: 0, maxSymbols: 0, width: 6 },
+  lookup: { label: "Stock lookup", description: "Exchange, last price, 52-week range, volume/average volume, dividend/yield and P/E per symbol.", minSymbols: 1, maxSymbols: 30, width: 12 },
 };
 
 export const panelSchema = z

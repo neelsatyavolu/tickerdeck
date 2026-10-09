@@ -72,3 +72,40 @@ describe("buildSystemPrompt", () => {
     expect(prompt).not.toContain("Symbols in focus");
   });
 });
+
+import { statsLines } from "./context";
+import { buildKeyStats } from "../market/stats";
+
+describe("statsLines", () => {
+  it("labels volume and valuation so the assistant can quote them", () => {
+    const st = buildKeyStats({ peTTM: 25.5, epsTTM: 7.9 }, { name: "Alphabet", exchange: "NASDAQ-GS", sector: "Technology", industry: null, assetClass: "stocks", annualDividend: null, exDividendDate: null, dividendYield: null, marketCap: 2.1e12, volume: 21_500_000, avgVolume: 28_000_000, dayHigh: 251, dayLow: 246 });
+    const text = statsLines(st, "GOOG").join("\n");
+    expect(text).toContain("volume today 21.50M shares");
+    expect(text).toContain("average daily volume 28.00M shares");
+    expect(text).toContain("day range $246.00 – $251.00");
+    expect(text).toContain("P/E (TTM) 25.5");
+  });
+});
+
+describe("symbol blocks for the worksheet", () => {
+  it("gives an index its level in points, its exchange note and 10-year return", () => {
+    const prompt = buildSystemPrompt({
+      now: new Date("2026-10-09T15:00:00Z"),
+      portfolios: [],
+      symbols: [{
+        symbol: "^DJI",
+        quote: { symbol: "^DJI", price: 51231.64, prevClose: 51179.87, time: Date.parse("2026-10-09T14:59:00Z") },
+        profile: null,
+        targets: null,
+        recommendations: [],
+        news: [],
+        forecast: null,
+        stats: { ...buildKeyStats({}, null), name: "Dow Jones Industrial Average", assetClass: "index" },
+        returns: [{ label: "1Y", value: 0.099 }, { label: "10Y", value: 1.832 }],
+      }],
+    });
+    expect(prompt).toContain("price 51,231.64 · prev close 51,179.87 (+0.10%)");
+    expect(prompt).toContain("exchange index (not traded)");
+    expect(prompt).toContain("returns: 1Y +9.90% · 10Y +183.20%");
+  });
+});

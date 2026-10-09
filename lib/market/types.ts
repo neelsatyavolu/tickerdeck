@@ -56,6 +56,10 @@ export type KeyStats = {
   high52: number | null;
   low52: number | null;
   avgVolume10d: number | null;
+  volume: number | null;
+  avgVolume: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
   dividendYield: number | null;
   annualDividend: number | null;
   exDividendDate: string | null;
