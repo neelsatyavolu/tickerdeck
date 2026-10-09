@@ -21,11 +21,11 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   await expect(connect).toHaveAttribute("href", /^https:\/\/auth\.openai\.com\/oauth\/authorize\?/);
 
   // Assistant defaults: effort and ChatGPT Fast mode persist across reloads.
-  await page.getByRole("group", { name: "ChatGPT reasoning effort" }).getByRole("button", { name: "High" }).click();
+  await page.getByRole("group", { name: "ChatGPT reasoning effort" }).getByRole("button", { name: "High", exact: true }).click();
   await page.getByRole("switch", { name: "ChatGPT Fast mode" }).click();
   await page.reload();
   await expect(page.getByRole("switch", { name: "ChatGPT Fast mode" })).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByRole("group", { name: "ChatGPT reasoning effort" }).getByRole("button", { name: "High" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("group", { name: "ChatGPT reasoning effort" }).getByRole("button", { name: "High", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   // The assistant is a window in the bottom-right corner.
   await page.getByRole("button", { name: /^Ask AI/ }).click();
