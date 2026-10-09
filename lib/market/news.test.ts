@@ -30,6 +30,18 @@ describe("curate", () => {
     expect(out[0].source).toBe("Reuters");
   });
 
+  it("treats an image shared by several stories as a placeholder", () => {
+    const logo = "https://s.yimg.com/rz/stage/p/yahoo_finance_en-US_h_p_finance_2.png";
+    const out = curate([
+      item({ url: "https://a.com/1", headline: "One", image: logo }),
+      item({ url: "https://a.com/2", headline: "Two", image: logo }),
+      item({ url: "https://a.com/3", headline: "Three", image: `${logo}?v=2` }),
+      item({ url: "https://a.com/4", headline: "Four", image: "https://img/4.jpg" }),
+    ]);
+    expect(out.find((n) => n.headline === "One")?.image).toBeNull();
+    expect(out.find((n) => n.headline === "Four")?.image).toBe("https://img/4.jpg");
+  });
+
   it("drops non-https images", () => {
     expect(curate([item({ image: "http://img/1.jpg" })])[0].image).toBeNull();
   });

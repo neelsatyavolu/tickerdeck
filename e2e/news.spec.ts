@@ -25,6 +25,9 @@ test("news tab shows curated stories and the footer links to GitHub", async ({ p
   await expect(page.getByRole("heading", { name: "Top stories" })).toBeVisible();
   await expect(page.locator(".news-card").first()).toBeVisible();
   await page.screenshot({ path: "test-results/news.png" });
+  // Stories without a real photo (outlet logos are filtered out) render as text cards, not empty boxes.
+  await page.getByRole("heading", { name: "Your stocks" }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/news-yours.png" });
 
   // Section tabs and the source filter narrow the list.
   await page.getByRole("button", { name: "Markets" }).click();

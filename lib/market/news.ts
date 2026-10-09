@@ -53,8 +53,23 @@ export function tidyText(headline: string, summary: string, source: string): { h
   return { headline: h, summary: repeats ? "" : summary };
 }
 
+const PLACEHOLDER_REPEATS = 3;
+const imageKey = (url: string) => url.replace(/[?#].*$/, "");
+
+/** Images that several different stories share are outlet placeholders, not photos. */
+function placeholderImages(items: NewsItem[]): Set<string> {
+  const counts = new Map<string, Set<string>>();
+  for (const n of items) {
+    if (!n.image) continue;
+    const k = imageKey(n.image);
+    counts.set(k, (counts.get(k) ?? new Set()).add(headlineKey(n.headline)));
+  }
+  return new Set([...counts].filter(([, stories]) => stories.size >= PLACEHOLDER_REPEATS).map(([k]) => k));
+}
+
 /** Reputable, https-only, deduplicated (by URL and headline), tickers merged, newest first. */
 export function curate(items: NewsItem[], limit = 60): NewsItem[] {
+  const placeholders = placeholderImages(items);
   const byKey = new Map<string, NewsItem>();
   const urlToKey = new Map<string, string>();
   for (const n of items) {
@@ -63,7 +78,7 @@ export function curate(items: NewsItem[], limit = 60): NewsItem[] {
     const key = urlToKey.get(n.url) ?? headlineKey(n.headline);
     const prev = byKey.get(key);
     const related = [...new Set([...(prev?.related ?? []), ...(n.related ?? [])])];
-    const image = prev?.image ?? realImage(n.image);
+    const image = prev?.image ?? (n.image && placeholders.has(imageKey(n.image)) ? null : realImage(n.image));
     const text = prev ? { headline: prev.headline, summary: prev.summary } : tidyText(n.headline, n.summary, n.source);
     byKey.set(key, { ...(prev ?? n), ...text, source: prev?.source ?? source, related, image, time: Math.max(prev?.time ?? 0, n.time) });
     urlToKey.set(n.url, key);

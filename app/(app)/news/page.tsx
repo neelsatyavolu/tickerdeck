@@ -22,19 +22,19 @@ const ALL_SOURCES = "All sources";
 /** For the overview: the freshest stories that have photos first (stable, so still newest-first within each group). */
 const pictured = (items: NewsItem[]) => [...items.slice(0, 24)].sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)));
 
-function StoryImage({ item, lead }: { item: NewsItem; lead?: boolean }) {
+/** The story's photo, or null once it fails to load (the card then renders as text). */
+function useImage(item: NewsItem): [string | null, () => void] {
   const [broken, setBroken] = useState(false);
-  if (!item.image || broken) {
-    return (
-      <div className={`news-img news-img-empty${lead ? " lead" : ""}`} aria-hidden="true">
-        <span>{item.source}</span>
-      </div>
-    );
-  }
+  return [broken ? null : item.image ?? null, () => setBroken(true)];
+}
+
+function Photo({ item, src, onError, lead }: { item: NewsItem; src: string; onError: () => void; lead?: boolean }) {
   return (
-    // Publisher images come from many hosts; a plain lazy <img> avoids proxying them.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img className={`news-img${lead ? " lead" : ""}`} src={item.image} alt="" loading={lead ? "eager" : "lazy"} referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+    <a href={item.url} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
+      {/* Publisher images come from many hosts; a plain lazy <img> avoids proxying them. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="news-img" src={src} alt="" loading={lead ? "eager" : "lazy"} referrerPolicy="no-referrer" onError={onError} />
+    </a>
   );
 }
 
@@ -51,9 +51,10 @@ function Tickers({ symbols, mine }: { symbols: string[]; mine: Set<string> }) {
 }
 
 function Lead({ item, mine }: { item: NewsItem; mine: Set<string> }) {
+  const [src, onError] = useImage(item);
   return (
-    <article className="news-lead">
-      <a href={item.url} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true"><StoryImage item={item} lead /></a>
+    <article className={`news-lead${src ? "" : " text"}`}>
+      {src && <Photo item={item} src={src} onError={onError} lead />}
       <div>
         <div className="label">{item.source} · {timeAgo(item.time)}</div>
         <h2 className="news-lead-headline"><a href={item.url} target="_blank" rel="noopener noreferrer">{item.headline}</a></h2>
@@ -64,12 +65,15 @@ function Lead({ item, mine }: { item: NewsItem; mine: Set<string> }) {
   );
 }
 
+/** A photo card when the story has a real photo; otherwise a text card with the summary. */
 function Card({ item, mine }: { item: NewsItem; mine: Set<string> }) {
+  const [src, onError] = useImage(item);
   return (
-    <article className="news-card">
-      <a href={item.url} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true"><StoryImage item={item} /></a>
-      <div className="label" style={{ marginTop: 10 }}>{item.source} · {timeAgo(item.time)}</div>
+    <article className={`news-card${src ? "" : " text"}`}>
+      {src && <Photo item={item} src={src} onError={onError} />}
+      <div className="label" style={src ? { marginTop: 10 } : undefined}>{item.source} · {timeAgo(item.time)}</div>
       <a className="news-card-headline" href={item.url} target="_blank" rel="noopener noreferrer">{item.headline}</a>
+      {!src && item.summary && <p className="muted news-card-summary">{item.summary}</p>}
       <Tickers symbols={item.related ?? []} mine={mine} />
     </article>
   );
