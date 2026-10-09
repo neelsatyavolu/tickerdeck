@@ -1,5 +1,5 @@
 import type { NasdaqSummary } from "./nasdaq";
-import type { KeyStats } from "./types";
+import type { KeyStats, PricePoint } from "./types";
 
 const n = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const frac = (v: unknown): number | null => (n(v) === null ? null : (n(v) as number) / 100);
@@ -39,5 +39,21 @@ export function buildKeyStats(m: Record<string, unknown>, s: NasdaqSummary | nul
     debtToEquity: n(m["totalDebt/totalEquityQuarterly"]),
     ytdReturn: frac(m.yearToDatePriceReturnDaily),
     relativeToSP500Ytd: frac(m["priceRelativeToS&P500Ytd"]),
+  };
+}
+
+/**
+ * Fill volume gaps from daily history: Nasdaq's summary sometimes reports
+ * "N/A" (e.g. thinly traded BRK.A, or outside market hours). Uses the latest
+ * session's volume and a 3-month average.
+ */
+export function withHistoryVolume(st: KeyStats, points: PricePoint[] | null): KeyStats {
+  if (!points?.length || (st.volume !== null && st.avgVolume !== null)) return st;
+  const vols = points.slice(-63).map((p) => p.volume).filter((v): v is number => typeof v === "number" && v > 0);
+  const latest = points[points.length - 1].volume;
+  return {
+    ...st,
+    volume: st.volume ?? (latest && latest > 0 ? latest : null),
+    avgVolume: st.avgVolume ?? (vols.length ? Math.round(vols.reduce((a, b) => a + b, 0) / vols.length) : null),
   };
 }

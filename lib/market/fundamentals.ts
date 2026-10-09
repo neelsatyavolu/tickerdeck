@@ -2,8 +2,8 @@ import "server-only";
 import { metrics } from "./finnhub";
 import { indexInfo } from "./indexes";
 import { summary } from "./nasdaq";
-import { quotes } from "./sources";
-import { buildKeyStats } from "./stats";
+import { history, quotes } from "./sources";
+import { buildKeyStats, withHistoryVolume } from "./stats";
 
 /** One row of a "stock look-up" table. */
 export type Fundamentals = {
@@ -33,8 +33,10 @@ export async function fundamentals(symbols: string[]): Promise<Fundamentals[]> {
       const symbol = symbols[next++];
       const q = price.get(symbol);
       const index = indexInfo(symbol);
-      const [m, s] = index ? [null, null] : await Promise.all([metrics(symbol).catch(() => null), summary(symbol).catch(() => null)]);
-      const st = buildKeyStats(m ?? {}, s);
+      const [m, s, hist] = index
+        ? [null, null, null]
+        : await Promise.all([metrics(symbol).catch(() => null), summary(symbol).catch(() => null), history(symbol, "3mo").catch(() => null)]);
+      const st = withHistoryVolume(buildKeyStats(m ?? {}, s), hist);
       rows.set(symbol, {
         symbol,
         name: index?.name ?? st.name,

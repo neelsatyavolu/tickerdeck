@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildKeyStats } from "./stats";
+import { buildKeyStats, withHistoryVolume } from "./stats";
 
 describe("buildKeyStats", () => {
   it("converts Finnhub percents to fractions and prefers Nasdaq's summary fields", () => {
@@ -22,5 +22,17 @@ describe("buildKeyStats", () => {
     expect(s.marketCap).toBe(1e9);
     expect(s.dividendYield).toBeCloseTo(0.02);
     expect(s.name).toBeNull();
+  });
+});
+
+describe("withHistoryVolume", () => {
+  it("fills missing volume from the last session and a 3-month average", () => {
+    const st = buildKeyStats({}, null);
+    const points = [{ t: 1, close: 1, volume: 100 }, { t: 2, close: 1, volume: 300 }];
+    expect(withHistoryVolume(st, points)).toMatchObject({ volume: 300, avgVolume: 200 });
+  });
+  it("keeps values the summary already had", () => {
+    const st = { ...buildKeyStats({}, null), volume: 5, avgVolume: 6 };
+    expect(withHistoryVolume(st, [{ t: 1, close: 1, volume: 100 }])).toMatchObject({ volume: 5, avgVolume: 6 });
   });
 });

@@ -74,6 +74,9 @@ test("watch symbols without holding them", async ({ page }) => {
   await page.getByRole("button", { name: "Add to another watchlist" }).click();
   await page.getByRole("menuitemcheckbox", { name: /Chips/ }).locator("input").check();
   await expect(page.getByRole("button", { name: "Add to another watchlist" })).toContainText("+1");
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch("/api/watchlists")).json()).data.find((l: { name: string }) => l.name === "Chips")?.items.length))
+    .toBe(2);
   await page.goto("/watchlist");
   await expect(page.getByRole("link", { name: /Chips\s*2/ })).toBeVisible();
   await page.getByRole("link", { name: /Chips/ }).click();

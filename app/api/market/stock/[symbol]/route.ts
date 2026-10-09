@@ -2,8 +2,8 @@ import { fail, ok, withUser } from "@/lib/api";
 import { earnings, marketNews, metrics, news, peers, profile, recommendations } from "@/lib/market/finnhub";
 import { indexInfo } from "@/lib/market/indexes";
 import { summary } from "@/lib/market/nasdaq";
-import { analystTargets, quote } from "@/lib/market/sources";
-import { buildKeyStats } from "@/lib/market/stats";
+import { analystTargets, history, quote } from "@/lib/market/sources";
+import { buildKeyStats, withHistoryVolume } from "@/lib/market/stats";
 import { firstIssue, symbolSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,7 @@ export function GET(_req: Request, { params }: { params: Promise<{ symbol: strin
         peers: none,
       });
     }
-    const [q, p, targets, recs, headlines, m, s, e, pe] = await Promise.all([
+    const [q, p, targets, recs, headlines, m, s, e, pe, h] = await Promise.all([
       settle(quote(symbol)),
       settle(profile(symbol)),
       settle(analystTargets(symbol)),
@@ -51,9 +51,10 @@ export function GET(_req: Request, { params }: { params: Promise<{ symbol: strin
       settle(summary(symbol)),
       settle(earnings(symbol)),
       settle(peers(symbol)),
+      settle(history(symbol, "3mo")),
     ]);
     if (!q.value && !p.value && !s.value) return fail(`No data for ${symbol}. Check the ticker.`, 404);
-    const stats = m.value || s.value ? { value: buildKeyStats(m.value ?? {}, s.value), error: null } : { value: null, error: m.error ?? s.error };
+    const stats = m.value || s.value ? { value: withHistoryVolume(buildKeyStats(m.value ?? {}, s.value), h.value), error: null } : { value: null, error: m.error ?? s.error };
     return ok({ symbol, quote: q, profile: p, stats, targets, recommendations: recs, news: headlines, earnings: e, peers: pe });
   });
 }

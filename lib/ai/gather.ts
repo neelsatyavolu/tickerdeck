@@ -2,7 +2,7 @@ import "server-only";
 import { forecastExposures } from "../forecast/service";
 import { earnings, metrics, news, profile, recommendations } from "../market/finnhub";
 import { summary } from "../market/nasdaq";
-import { buildKeyStats } from "../market/stats";
+import { buildKeyStats, withHistoryVolume } from "../market/stats";
 import { analystTargets, history, quote, quotes } from "../market/sources";
 import { namedSymbols } from "../market/companyNames";
 import { periodReturns } from "../market/performance";
@@ -27,7 +27,7 @@ async function symbolContext(symbol: string, detailed: boolean): Promise<SymbolC
   const base = {
     symbol,
     quote: q,
-    stats: m || sum ? buildKeyStats(m ?? {}, sum) : null,
+    stats: m || sum ? withHistoryVolume(buildKeyStats(m ?? {}, sum), hist) : null,
     returns: hist ? periodReturns(hist, q.price) : [],
   };
   if (!detailed) return { ...base, profile: null, targets: null, recommendations: [], news: [], forecast: null, earnings: [] };
