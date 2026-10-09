@@ -19,6 +19,9 @@ const TABS = ["All", "For you", "Markets", "Deals"] as const;
 type Tab = (typeof TABS)[number];
 const ALL_SOURCES = "All sources";
 
+/** For the overview: the freshest stories that have photos first (stable, so still newest-first within each group). */
+const pictured = (items: NewsItem[]) => [...items.slice(0, 24)].sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)));
+
 function StoryImage({ item, lead }: { item: NewsItem; lead?: boolean }) {
   const [broken, setBroken] = useState(false);
   if (!item.image || broken) {
@@ -153,16 +156,16 @@ export default function NewsPage() {
       {feeds && tab === "All" && (
         <>
           {lead && <Lead item={lead} mine={mine} />}
-          <Block title="Top stories" items={top.filter((n) => n !== lead).slice(0, 6)} more={top.length} mine={mine} onMore={() => setTab("Markets")} />
+          <Block title="Top stories" items={pictured(top.filter((n) => n !== lead)).slice(0, 8)} more={top.length} mine={mine} onMore={() => setTab("Markets")} />
           {mine.size === 0 ? (
             <section className="section">
               <h2 className="display">For you</h2>
               <div className="notice" style={{ marginTop: 12 }}>Hold or watch a few stocks and their news shows up here.</div>
             </section>
           ) : (
-            <Block title="Your stocks" items={forYou.slice(0, 9)} more={forYou.length} mine={mine} onMore={() => setTab("For you")} />
+            <Block title="Your stocks" items={pictured(forYou).slice(0, 8)} more={forYou.length} mine={mine} onMore={() => setTab("For you")} />
           )}
-          <Block title="Deals" items={deals.slice(0, 3)} more={deals.length} mine={mine} onMore={() => setTab("Deals")} />
+          <Block title="Deals" items={pictured(deals).slice(0, 4)} more={deals.length} mine={mine} onMore={() => setTab("Deals")} />
         </>
       )}
       {feeds && tab !== "All" && (

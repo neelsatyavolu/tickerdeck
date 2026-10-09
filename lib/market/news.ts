@@ -40,6 +40,19 @@ export function sourceName(raw: string): string | null {
 
 const headlineKey = (h: string) => h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 90);
 
+/** Outlet logos stand in for photos on some feeds (every Reuters story has the same one). */
+export function realImage(url: string | null | undefined): string | null {
+  if (!url?.startsWith("https://")) return null;
+  return /\/logos?\/|logo[^/]*\.(png|jpe?g|svg|webp)$/i.test(url.replace(/[?#].*$/, "")) ? null : url;
+}
+
+/** "Stocks rally - Reuters" → "Stocks rally"; summaries that only repeat the headline are dropped. */
+export function tidyText(headline: string, summary: string, source: string): { headline: string; summary: string } {
+  const h = headline.replace(new RegExp(`\\s+[-–—|]\\s+${source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"), "").trim();
+  const repeats = headlineKey(summary).startsWith(headlineKey(h));
+  return { headline: h, summary: repeats ? "" : summary };
+}
+
 /** Reputable, https-only, deduplicated (by URL and headline), tickers merged, newest first. */
 export function curate(items: NewsItem[], limit = 60): NewsItem[] {
   const byKey = new Map<string, NewsItem>();
@@ -50,8 +63,9 @@ export function curate(items: NewsItem[], limit = 60): NewsItem[] {
     const key = urlToKey.get(n.url) ?? headlineKey(n.headline);
     const prev = byKey.get(key);
     const related = [...new Set([...(prev?.related ?? []), ...(n.related ?? [])])];
-    const image = prev?.image ?? (n.image?.startsWith("https://") ? n.image : null);
-    byKey.set(key, { ...(prev ?? n), source: prev?.source ?? source, related, image, time: Math.max(prev?.time ?? 0, n.time) });
+    const image = prev?.image ?? realImage(n.image);
+    const text = prev ? { headline: prev.headline, summary: prev.summary } : tidyText(n.headline, n.summary, n.source);
+    byKey.set(key, { ...(prev ?? n), ...text, source: prev?.source ?? source, related, image, time: Math.max(prev?.time ?? 0, n.time) });
     urlToKey.set(n.url, key);
   }
   return [...byKey.values()].sort((a, b) => b.time - a.time).slice(0, limit);

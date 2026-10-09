@@ -327,7 +327,8 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 
 /* News */
 .news-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--surface); border: 1px solid var(--border); }
-.news-img-empty { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+.news-img-empty { display: flex; align-items: flex-end; justify-content: flex-start; padding: 16px 18px; border-left: 3px solid var(--accent-muted); font-family: var(--serif); font-size: 26px; color: var(--fg-2); }
+.news-img-empty.lead { font-size: 44px; padding: 28px 32px; }
 .news-lead { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: center; margin-top: 24px; padding-bottom: 8px; }
 .news-lead-headline { font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.15; margin: 10px 0 0; text-wrap: balance; }
 .news-lead-headline a:hover, .news-card-headline:hover { color: var(--accent); }

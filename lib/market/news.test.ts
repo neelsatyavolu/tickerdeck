@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { curate, sourceName } from "./news";
+import { curate, realImage, sourceName, tidyText } from "./news";
 import type { NewsItem } from "./types";
 
 const item = (o: Partial<NewsItem>): NewsItem => ({ time: 1, headline: "H", source: "Reuters", url: "https://x.com/a", summary: "", image: null, related: [], ...o });
@@ -32,5 +32,20 @@ describe("curate", () => {
 
   it("drops non-https images", () => {
     expect(curate([item({ image: "http://img/1.jpg" })])[0].image).toBeNull();
+  });
+});
+
+describe("realImage", () => {
+  it("drops outlet logos but keeps photos", () => {
+    expect(realImage("https://static2.finnhub.io/file/finnhub/logo/reuters_logo.jpeg")).toBeNull();
+    expect(realImage("https://data.bloomberglp.com/company/sites/2/2019/01/logobbg-wht.png")).toBeNull();
+    expect(realImage("https://image.cnbcfm.com/api/v1/image/108321059-IMG_9244.jpg?w=1920")).toBe("https://image.cnbcfm.com/api/v1/image/108321059-IMG_9244.jpg?w=1920");
+  });
+});
+
+describe("tidyText", () => {
+  it("strips the outlet suffix and echo summaries", () => {
+    expect(tidyText("Stocks rally - Reuters", "Stocks rally  Reuters", "Reuters")).toEqual({ headline: "Stocks rally", summary: "" });
+    expect(tidyText("Fed holds", "Officials kept rates steady.", "CNBC")).toEqual({ headline: "Fed holds", summary: "Officials kept rates steady." });
   });
 });
