@@ -6,6 +6,7 @@ import { pct, plainPct, tone, usd } from "@/lib/format";
 import { prefetchStock } from "@/lib/client/prefetch";
 import { YAHOO_PAGES, yahooUrl } from "@/lib/links";
 import type { PeriodReturn } from "@/lib/market/performance";
+import { paysDividend } from "@/lib/market/stats";
 import type { EarningsPoint, KeyStats } from "@/lib/market/types";
 import { useWidth } from "./charts/useWidth";
 
@@ -59,9 +60,13 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
     ["P/S (TTM)", num(stats.psTTM, 1)],
     ["P/B", num(stats.pb, 1)],
     ["Beta", num(stats.beta, 2)],
-    ["Dividend yield", plainPct(stats.dividendYield, 2)],
-    ["Annual dividend", stats.annualDividend === null ? "—" : usd(stats.annualDividend, { digits: 2 })],
-    ["Ex-dividend", stats.exDividendDate ?? "—"],
+    ...(paysDividend(stats) === false
+      ? ([["Dividend", "None"]] as [string, React.ReactNode][])
+      : ([
+          ["Dividend yield", plainPct(stats.dividendYield, 2)],
+          ["Annual dividend", stats.annualDividend ? usd(stats.annualDividend, { digits: 2 }) : "—"],
+          ["Ex-dividend", stats.exDividendDate ?? "—"],
+        ] as [string, React.ReactNode][])),
     ["Debt / equity", num(stats.debtToEquity, 2)],
     ["Gross margin", plainPct(stats.grossMargin, 1)],
     ["Operating margin", plainPct(stats.operatingMargin, 1)],

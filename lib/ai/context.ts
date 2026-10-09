@@ -1,4 +1,5 @@
 import { panelGuide } from "../dashboard/aiPanels";
+import { paysDividend } from "../market/stats";
 import type { Forecast } from "../forecast/montecarlo";
 import type { AnalystTargets, EarningsPoint, KeyStats, NewsItem, Profile, QuoteSnapshot, Recommendation } from "../market/types";
 import type { Position, Totals } from "../portfolio/math";
@@ -89,7 +90,9 @@ export function statsLines(st: KeyStats, symbol: string): string[] {
     `exchange ${st.exchange ?? (symbol.startsWith("^") ? "index (not traded)" : "n/a")}`,
     `volume today ${shares(st.volume)} · average daily volume ${shares(st.avgVolume ?? st.avgVolume10d)} · day range ${money(st.dayLow)} – ${money(st.dayHigh)} · 52-week range ${money(st.low52)} – ${money(st.high52)}`,
     `market cap ${st.marketCap ? `$${(st.marketCap / 1e9).toFixed(1)}B` : "n/a"} · P/E (TTM) ${num(st.peTTM, 1)} · EPS (TTM) ${usd(st.epsTTM)} · PEG ${num(st.pegTTM)} · P/S ${num(st.psTTM, 1)} · P/B ${num(st.pb, 1)} · beta ${num(st.beta)}`,
-    `dividend yield ${frac(st.dividendYield)} · annual dividend ${usd(st.annualDividend)} · ex-dividend ${st.exDividendDate ?? "n/a"}`,
+    paysDividend(st) === false
+      ? "dividend: none (this company does not pay a dividend)"
+      : `dividend yield ${frac(st.dividendYield)} · annual dividend ${st.annualDividend ? usd(st.annualDividend) : "n/a"} · ex-dividend ${st.exDividendDate ?? "n/a"}`,
     `gross margin ${frac(st.grossMargin)} · operating margin ${frac(st.operatingMargin)} · net margin ${frac(st.netMargin)} · ROE ${frac(st.roe)} · revenue growth YoY ${frac(st.revenueGrowthYoy)} · EPS growth YoY ${frac(st.epsGrowthYoy)} · debt/equity ${num(st.debtToEquity)}`,
     `YTD return ${frac(st.ytdReturn)} · YTD vs S&P 500 ${frac(st.relativeToSP500Ytd)}${st.sector ? ` · sector ${st.sector}` : ""}${st.industry ? ` · industry ${st.industry}` : ""}`,
   ];

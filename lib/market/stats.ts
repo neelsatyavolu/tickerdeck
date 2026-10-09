@@ -57,3 +57,11 @@ export function withHistoryVolume(st: KeyStats, points: PricePoint[] | null): Ke
     avgVolume: st.avgVolume ?? (vols.length ? Math.round(vols.reduce((a, b) => a + b, 0) / vols.length) : null),
   };
 }
+
+/** True when the security pays a dividend; false when we know it doesn't; null when unknown. */
+export function paysDividend(st: Pick<KeyStats, "annualDividend" | "dividendYield" | "assetClass">): boolean | null {
+  if ((st.annualDividend ?? 0) > 0 || (st.dividendYield ?? 0) > 0) return true;
+  if (st.annualDividend === 0 || st.dividendYield === 0) return false;
+  // Stocks with no dividend data at all don't pay one (e.g. TSLA); funds and indexes stay unknown.
+  return st.assetClass === "stocks" ? false : null;
+}

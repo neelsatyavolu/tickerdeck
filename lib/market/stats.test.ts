@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildKeyStats, withHistoryVolume } from "./stats";
+import { buildKeyStats, paysDividend, withHistoryVolume } from "./stats";
 
 describe("buildKeyStats", () => {
   it("converts Finnhub percents to fractions and prefers Nasdaq's summary fields", () => {
@@ -34,5 +34,14 @@ describe("withHistoryVolume", () => {
   it("keeps values the summary already had", () => {
     const st = { ...buildKeyStats({}, null), volume: 5, avgVolume: 6 };
     expect(withHistoryVolume(st, [{ t: 1, close: 1, volume: 100 }])).toMatchObject({ volume: 5, avgVolume: 6 });
+  });
+});
+
+describe("paysDividend", () => {
+  it("knows payers, non-payers and unknowns", () => {
+    expect(paysDividend({ annualDividend: 2.12, dividendYield: 0.03, assetClass: "stocks" })).toBe(true);
+    expect(paysDividend({ annualDividend: 0, dividendYield: null, assetClass: "stocks" })).toBe(false);
+    expect(paysDividend({ annualDividend: null, dividendYield: null, assetClass: "stocks" })).toBe(false);
+    expect(paysDividend({ annualDividend: null, dividendYield: null, assetClass: "index" })).toBeNull();
   });
 });
