@@ -193,10 +193,10 @@ export default function WatchlistPage() {
             <thead>
               <tr>
                 <th scope="col" style={{ width: 28, paddingRight: 0 }}><span className="sr-only">Reorder</span></th>
-                <th scope="col" aria-sort={sort.key === "symbol" ? (sort.desc ? "descending" : "ascending") : "none"}>
+                <th scope="col" className="left" aria-sort={sort.key === "symbol" ? (sort.desc ? "descending" : "ascending") : "none"}>
                   <button className="btn-text" style={{ padding: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", textTransform: "inherit" }} onClick={() => setSortKey("symbol")}>Symbol{arrow("symbol")}</button>
                 </th>
-                <th scope="col">3M trend</th>
+                <th scope="col" className="left">3M trend</th>
                 {COLUMNS.map((c) => (
                   <th key={c.key} scope="col" aria-sort={sort.key === c.key ? (sort.desc ? "descending" : "ascending") : "none"}>
                     <button className="btn-text" style={{ padding: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", textTransform: "inherit" }} onClick={() => setSortKey(c.key)}>{c.label}{arrow(c.key)}</button>
@@ -233,12 +233,12 @@ export default function WatchlistPage() {
                   <td style={{ paddingRight: 0 }}>
                     {custom ? <span className="grip" aria-hidden="true" title="Drag to reorder" /> : null}
                   </td>
-                  <td style={{ whiteSpace: "normal", minWidth: 160 }}>
+                  <td className="left" style={{ whiteSpace: "normal", minWidth: 160 }}>
                     <Link href={`/s/${encodeURIComponent(r.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(r.symbol)}>{r.symbol}</Link>
                     <a href={yahooUrl(r.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${r.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     {r.name && <div className="faint" style={{ fontFamily: "var(--sans)", fontSize: 12, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>}
                   </td>
-                  <td>
+                  <td className="left">
                     <Sparkline values={r.overview?.spark ?? []} label={`${r.symbol} over 3 months: ${pct(r.r3m, 1)}`} />
                   </td>
                   <td>{usd(r.price)}</td>

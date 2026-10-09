@@ -134,7 +134,7 @@ select.input option { background: var(--bg); }
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.data th { text-align: right; font-family: var(--mono); font-size: 12px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 table.data td { text-align: right; padding: 10px 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data th:first-child, table.data td:first-child, table.data .left { text-align: left; }
 table.data tbody tr:hover { background: var(--surface-hover); }
 table.data tr.lot td { color: var(--fg-3); font-size: 13px; }
 .weight-bar { display: inline-block; height: 8px; background: var(--fg-3); vertical-align: middle; margin-right: 8px; }
