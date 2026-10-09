@@ -23,7 +23,7 @@ import { aggregatePositions, portfolioTotals } from "@/lib/portfolio/math";
 // One component per panel type. Each loads only what it shows, through the
 // same cached hooks the rest of the app uses.
 
-const RANGE_TO_HISTORY: Record<NonNullable<Panel["range"]>, HistoryRange> = { "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "2Y": "2y", "5Y": "5y" };
+const RANGE_TO_HISTORY: Record<NonNullable<Panel["range"]>, HistoryRange> = { "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "2Y": "2y", "5Y": "5y", "10Y": "10y" };
 const Loading = () => <div className="notice">Loading<span className="caret" aria-hidden="true" /></div>;
 
 const SymbolLink = ({ symbol }: { symbol: string }) => (
@@ -138,7 +138,9 @@ function PriceView({ panel }: { panel: Panel }) {
   if (failed.length) return <div className="notice">No price history for {symbol}.</div>;
   if (loading && points.length === 0) return <Loading />;
   const compact = panel.width <= 4;
-  return <LineChart points={points} label={`${symbol} price`} height={compact ? 150 : 240} showVolume={!compact} money={!symbol.startsWith("^")} />;
+  // Volume only where it means something: daily data (≤ 2 years) for securities, not indexes.
+  const long = panel.range === "5Y" || panel.range === "10Y";
+  return <LineChart points={points} label={`${symbol} price`} height={compact ? 150 : 240} showVolume={!compact && !long && !symbol.startsWith("^")} money={!symbol.startsWith("^")} />;
 }
 
 function CompareView({ panel }: { panel: Panel }) {

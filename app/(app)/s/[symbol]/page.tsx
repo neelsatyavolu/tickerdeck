@@ -35,7 +35,7 @@ type StockInfo = {
   peers: Panel<string[]>;
 };
 
-const RANGES = { "1M": 31, "3M": 92, "6M": 183, "1Y": 366, "2Y": 731, "5Y": 1827 } as const;
+const RANGES = { "1M": 31, "3M": 92, "6M": 183, "1Y": 366, "2Y": 731, "5Y": 1827, "10Y": 3653 } as const;
 type Range = keyof typeof RANGES;
 const RANGE_KEYS = Object.keys(RANGES) as Range[];
 
@@ -49,8 +49,8 @@ export default function StockPage() {
   const { prices, checked, lastTrade } = useLivePrices([symbol]);
   const [forecastFor, setForecastFor] = useState<string | null>(null);
   const onForecastSettled = useCallback(() => setForecastFor(symbol), [symbol]);
-  // One 5-year fetch feeds every range, the performance strip and the forecast.
-  const { data: hist, failed, loading: histLoading } = useHistories([symbol], "5y");
+  // One 10-year fetch feeds every range, the performance strip and the forecast.
+  const { data: hist, failed, loading: histLoading } = useHistories([symbol], "10y");
   const { ask } = useAssistant();
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function StockPage() {
         ) : histLoading && all.length === 0 ? (
           <div className="notice">Loading history<span className="caret" aria-hidden="true" /></div>
         ) : (
-          <LineChart points={points} label={`${symbol} price`} height={320} money={!isIndexPage} showVolume overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
+          <LineChart points={points} label={`${symbol} price`} height={320} money={!isIndexPage} showVolume={!isIndexPage && RANGES[range] <= 731} overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
         )}
       </section>
 

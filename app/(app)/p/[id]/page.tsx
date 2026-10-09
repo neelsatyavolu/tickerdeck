@@ -21,7 +21,7 @@ import { holdingsValueSeries } from "@/lib/portfolio/history";
 import { aggregatePositions, portfolioTotals } from "@/lib/portfolio/math";
 import { addHolding, deletePortfolio, updatePortfolio } from "@/lib/client/portfolios";
 
-const RANGES = ["3mo", "6mo", "1y", "2y"] as const satisfies readonly HistoryRange[];
+const RANGES = ["3mo", "6mo", "1y", "2y", "5y", "10y"] as const satisfies readonly HistoryRange[];
 
 export default function PortfolioPage() {
   const { id } = useParams<{ id: string }>();

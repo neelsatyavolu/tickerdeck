@@ -8,12 +8,12 @@ import type { HistoryRange, PricePoint } from "@/lib/market/types";
 type Loaded = { id: string; data: Record<string, PricePoint[]>; failed: string[] };
 const EMPTY: Loaded = { id: "", data: {}, failed: [] };
 
-const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827 };
+const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827, "10y": 3653 };
 const HISTORY_TTL = 10 * 60_000;
 
 /**
  * Daily closes for several symbols; symbols that fail are reported, not fatal.
- * Always fetches the 5-year series (cached in the browser) and cuts the range
+ * Always fetches the 10-year series (cached in the browser) and cuts the range
  * locally, so changing ranges or revisiting a page doesn't hit the network.
  */
 export function useHistories(symbols: string[], range: HistoryRange) {
@@ -26,8 +26,8 @@ export function useHistories(symbols: string[], range: HistoryRange) {
     let cancelled = false;
     Promise.all(
       key.split(",").map((s) =>
-        cachedApi<PricePoint[]>(`/api/market/history?symbol=${encodeURIComponent(s)}&range=5y`, HISTORY_TTL).then(
-          (points) => [s, range === "5y" ? points : lastDays(points, RANGE_DAYS[range])] as const,
+        cachedApi<PricePoint[]>(`/api/market/history?symbol=${encodeURIComponent(s)}&range=10y`, HISTORY_TTL).then(
+          (points) => [s, range === "10y" ? points : lastDays(points, RANGE_DAYS[range])] as const,
           () => [s, null] as const,
         ),
       ),

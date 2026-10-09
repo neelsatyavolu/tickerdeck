@@ -3,7 +3,7 @@ import type { PricePoint } from "./types";
 export type PeriodReturn = { label: string; value: number | null };
 
 const DAY = 86_400_000;
-const WINDOWS: [string, number][] = [["1W", 7], ["1M", 30], ["3M", 91], ["6M", 182], ["1Y", 365], ["3Y", 1095], ["5Y", 1826]];
+const WINDOWS: [string, number][] = [["1W", 7], ["1M", 30], ["3M", 91], ["6M", 182], ["1Y", 365], ["3Y", 1095], ["5Y", 1826], ["10Y", 3652]];
 
 /** Last close at or before time t (points ascending), or null if t is before the series. */
 function closeAt(points: PricePoint[], t: number): number | null {
@@ -27,7 +27,8 @@ export function periodReturns(points: PricePoint[], livePrice?: number | null): 
   const yearStart = Date.UTC(new Date(last.t).getUTCFullYear(), 0, 1);
   const rows: PeriodReturn[] = WINDOWS.map(([label, days]) => {
     const t = last.t - days * DAY;
-    return { label, value: t < points[0].t - 3 * DAY ? null : ret(closeAt(points, t)) };
+    // Weekly closes in older history: allow a week of slack when matching the start.
+    return { label, value: t < points[0].t - 7 * DAY ? null : ret(closeAt(points, t)) };
   });
   rows.splice(4, 0, { label: "YTD", value: yearStart <= points[0].t ? null : ret(closeAt(points, yearStart - 1)) });
   return rows;

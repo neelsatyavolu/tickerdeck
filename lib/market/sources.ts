@@ -4,6 +4,7 @@ import * as finnhub from "./finnhub";
 import { isIndex, searchIndexes } from "./indexes";
 import * as nasdaq from "./nasdaq";
 import * as yahoo from "./yahoo";
+import { weeklyBefore } from "./downsample";
 import { UpstreamError } from "./http";
 import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
@@ -68,30 +69,37 @@ export function mergeSearch(query: string, finnhubHits: SymbolMatch[], nasdaqHit
   return merged.sort((x, y) => Number(y.symbol === upper) - Number(x.symbol === upper)).slice(0, 8);
 }
 
-const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827 };
+const DAY = 86_400_000;
+const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827, "10y": 3653 };
+const DAILY_DAYS = 731; // older than ~2 years is kept weekly
+
+/** Ten years: daily for the last two, weekly before. Cached via the source adapters. */
+async function fullHistory(symbol: string): Promise<PricePoint[]> {
+  let full: PricePoint[];
+  if (isIndex(symbol)) full = await cnbc.history(symbol);
+  else {
+    try {
+      full = await nasdaq.history(symbol, "10y");
+    } catch (first) {
+      try {
+        full = await yahoo.history(symbol, "10y");
+      } catch {
+        throw first instanceof UpstreamError ? first : new UpstreamError("nasdaq", 0, `No price history for ${symbol}`);
+      }
+    }
+  }
+  if (full.length === 0) return full;
+  return weeklyBefore(full, full[full.length - 1].t - DAILY_DAYS * DAY);
+}
 
 /**
- * Every range is cut from one cached 5-year series, so a symbol costs one
+ * Every range is cut from one cached 10-year series, so a symbol costs one
  * upstream call per hour no matter how many charts and ranges ask for it.
  */
 export async function history(symbol: string, range: HistoryRange): Promise<PricePoint[]> {
-  let full: PricePoint[];
-  if (isIndex(symbol)) {
-    full = await cnbc.history(symbol);
-    const from = full[full.length - 1].t - RANGE_DAYS[range] * 86_400_000;
-    return full.filter((p) => p.t >= from);
-  }
-  try {
-    full = await nasdaq.history(symbol, "5y");
-  } catch (first) {
-    try {
-      full = await yahoo.history(symbol, "5y");
-    } catch {
-      throw first instanceof UpstreamError ? first : new UpstreamError("nasdaq", 0, `No price history for ${symbol}`);
-    }
-  }
-  if (range === "5y" || full.length === 0) return full;
-  const from = full[full.length - 1].t - RANGE_DAYS[range] * 86_400_000;
+  const full = await fullHistory(symbol);
+  if (range === "10y" || full.length === 0) return full;
+  const from = full[full.length - 1].t - RANGE_DAYS[range] * DAY;
   return full.filter((p) => p.t >= from);
 }
 

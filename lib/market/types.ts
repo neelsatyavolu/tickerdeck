@@ -34,7 +34,7 @@ export type NewsItem = { time: number; headline: string; source: string; url: st
 
 export type SymbolMatch = { symbol: string; name: string; type: string };
 
-export const HISTORY_RANGES = ["1mo", "3mo", "6mo", "1y", "2y", "5y"] as const;
+export const HISTORY_RANGES = ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"] as const;
 export type HistoryRange = (typeof HISTORY_RANGES)[number];
 
 export type TargetPoint = { t: number; target: number; buy: number; hold: number; sell: number };

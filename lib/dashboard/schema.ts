@@ -22,7 +22,7 @@ export type PanelType = (typeof PANEL_TYPES)[number];
 export const PANEL_WIDTHS = [3, 4, 6, 8, 12] as const;
 export type PanelWidth = (typeof PANEL_WIDTHS)[number];
 
-export const CHART_RANGES = ["1M", "3M", "6M", "1Y", "2Y", "5Y"] as const;
+export const CHART_RANGES = ["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y"] as const;
 export const FORECAST_HORIZONS = ["1w", "1m", "3m", "6m", "1y"] as const;
 
 type Meta = { label: string; description: string; minSymbols: number; maxSymbols: number; width: PanelWidth };

@@ -118,7 +118,7 @@ export function panelGuide(): string {
     "```" + DASHBOARD_FENCE,
     '{"name":"Semiconductors","panels":[{"id":"ab12cd34","type":"tiles","title":"Chips today","symbols":["NVDA","AMD","AVGO"],"width":12},{"type":"compare","title":"1-year race","symbols":["NVDA","AMD","AVGO"],"range":"1Y","width":8}]}',
     "```",
-    "Fields: type, symbols (US tickers; indexes as ^GSPC ^DJI ^IXIC ^NDX ^RUT ^VIX), title, width (3, 4, 6, 8 or 12 of a 12-column row), range (1M 3M 6M 1Y 2Y 5Y) for price/compare, horizon (1w 1m 3m 6m 1y) for forecast, portfolioId for portfolio.",
+    "Fields: type, symbols (US tickers; indexes as ^GSPC ^DJI ^IXIC ^NDX ^RUT ^VIX), title, width (3, 4, 6, 8 or 12 of a 12-column row), range (1M 3M 6M 1Y 2Y 5Y 10Y) for price/compare, horizon (1w 1m 3m 6m 1y) for forecast, portfolioId for portfolio.",
     "Panel types:",
     ...types,
     "",

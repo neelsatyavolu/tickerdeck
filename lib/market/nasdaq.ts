@@ -13,7 +13,7 @@ const HEADERS = {
 };
 const HISTORY_TTL = 60 * 60_000;
 const SLOW_TTL = 6 * 60 * 60_000;
-const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827 };
+const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827, "10y": 3653 };
 
 export type AssetClass = "stocks" | "etf" | "mutualfunds";
 const ASSET_CLASSES: AssetClass[] = ["stocks", "etf", "mutualfunds"];
@@ -191,8 +191,8 @@ export function latestQuote(symbol: string, points: PricePoint[]): QuoteSnapshot
 
 /** Quote from recent daily closes, for symbols Finnhub's free plan won't price (mutual funds). */
 export function quote(symbol: string): Promise<QuoteSnapshot | null> {
-  // Reuses the cached 5-year series rather than making another call.
-  return memo(`nq:quote:${symbol}`, 5 * 60_000, async () => latestQuote(symbol, await history(symbol, "5y")));
+  // Reuses the cached 10-year series rather than making another call.
+  return memo(`nq:quote:${symbol}`, 5 * 60_000, async () => latestQuote(symbol, await history(symbol, "10y")));
 }
 
 type RawLookup = { symbol: string; name: string; asset?: string }[];
