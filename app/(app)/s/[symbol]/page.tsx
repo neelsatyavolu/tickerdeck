@@ -78,7 +78,8 @@ export default function StockPage() {
     { label: "Company details", done: info !== null },
     { label: "Price history", done: all.length > 0 || failed.length > 0 },
     { label: "Live price", done: price !== null || Boolean(checked[symbol]) },
-    { label: "Forecast", done: forecastFor === symbol },
+    // No price at all means no forecast will run; don't wait for one.
+    { label: "Forecast", done: forecastFor === symbol || (Boolean(checked[symbol]) && price === null) },
   ];
 
   if (error) {

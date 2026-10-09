@@ -55,7 +55,7 @@ export default function PortfolioPage() {
     { label: "Portfolio", done: !loading },
     { label: "Live prices", done: !loading && symbols.every((s) => prices[s] || checked[s]) },
     { label: "Price history", done: !loading && (noCharts || !historyLoading) },
-    { label: "Forecast", done: !loading && (noCharts || forecastFor === id) },
+    { label: "Forecast", done: !loading && (noCharts || forecastFor === id || (symbols.every((s) => prices[s] || checked[s]) && exposures.length === 0)) },
   ];
 
   if (loading) return <PageGate key={`loading-${id}`} title="portfolio" steps={steps}>{null}</PageGate>;

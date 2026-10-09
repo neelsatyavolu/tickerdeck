@@ -35,11 +35,21 @@ export async function quotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot
 
 export async function search(query: string): Promise<SymbolMatch[]> {
   const [a, b] = await Promise.all([finnhub.search(query).catch(() => []), nasdaq.search(query).catch(() => [])]);
+  return mergeSearch(query, a, b);
+}
+
+/**
+ * Exact ticker first, then Finnhub's matches, then Nasdaq's. Nasdaq also
+ * matches the query anywhere inside obscure fund tickers, so only keep its
+ * results whose ticker starts with the query or whose name contains it.
+ */
+export function mergeSearch(query: string, finnhubHits: SymbolMatch[], nasdaqHits: SymbolMatch[]): SymbolMatch[] {
+  const upper = query.trim().toUpperCase();
+  const lower = query.trim().toLowerCase();
+  const relevant = nasdaqHits.filter((m) => m.symbol.startsWith(upper) || m.name.toLowerCase().includes(lower));
   const seen = new Set<string>();
-  const merged = [...b, ...a].filter((m) => !seen.has(m.symbol) && seen.add(m.symbol));
-  // An exact ticker match goes first.
-  const q = query.trim().toUpperCase();
-  return merged.sort((x, y) => Number(y.symbol === q) - Number(x.symbol === q)).slice(0, 8);
+  const merged = [...finnhubHits, ...relevant].filter((m) => !seen.has(m.symbol) && Boolean(seen.add(m.symbol)));
+  return merged.sort((x, y) => Number(y.symbol === upper) - Number(x.symbol === upper)).slice(0, 8);
 }
 
 export async function history(symbol: string, range: HistoryRange): Promise<PricePoint[]> {

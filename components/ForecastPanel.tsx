@@ -17,7 +17,7 @@ type Props = {
   runKey: string;
   history: SeriesPoint[];
   onAskOutlook?: () => void;
-  /** Called once the first forecast has resolved (or can't run), for page loaders. */
+  /** Called once a forecast has resolved (with a result or an error), for page loaders. */
   onSettled?: () => void;
 };
 
@@ -49,7 +49,7 @@ export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSett
 
   // Keep the previous chart visible (dimmed) while a new horizon runs.
   const loading = result?.id !== id;
-  const settled = !ready || !loading;
+  const settled = ready && !loading;
   useEffect(() => {
     if (settled) onSettled?.();
   }, [settled, onSettled]);
