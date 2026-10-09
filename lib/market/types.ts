@@ -45,7 +45,7 @@ export type KeyStats = {
   exchange: string | null;
   sector: string | null;
   industry: string | null;
-  assetClass: "stocks" | "etf" | "mutualfunds" | null;
+  assetClass: "stocks" | "etf" | "mutualfunds" | "index" | null;
   marketCap: number | null;
   peTTM: number | null;
   epsTTM: number | null;

@@ -78,11 +78,16 @@ function get<T>(path: string): Promise<Envelope<T>> {
 /** Nasdaq files stocks, ETFs and mutual funds separately; find which one this symbol is. */
 export function assetClass(symbol: string): Promise<AssetClass | null> {
   return memo(`nq:class:${symbol}`, SLOW_TTL, async () => {
-    for (const cls of ASSET_CLASSES) {
-      const r = await get<{ companyName?: string }>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`);
-      if (r.data?.companyName) return cls;
-    }
-    return null;
+    // Ask all three at once; one round trip instead of up to three.
+    const found = await Promise.all(
+      ASSET_CLASSES.map((cls) =>
+        get<{ companyName?: string }>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`).then(
+          (r) => (r.data?.companyName ? cls : null),
+          () => null,
+        ),
+      ),
+    );
+    return found.find((c): c is AssetClass => c !== null) ?? null;
   });
 }
 
@@ -155,7 +160,8 @@ export function latestQuote(symbol: string, points: PricePoint[]): QuoteSnapshot
 
 /** Quote from recent daily closes, for symbols Finnhub's free plan won't price (mutual funds). */
 export function quote(symbol: string): Promise<QuoteSnapshot | null> {
-  return memo(`nq:quote:${symbol}`, 5 * 60_000, async () => latestQuote(symbol, await history(symbol, "1mo")));
+  // Reuses the cached 5-year series rather than making another call.
+  return memo(`nq:quote:${symbol}`, 5 * 60_000, async () => latestQuote(symbol, await history(symbol, "5y")));
 }
 
 type RawLookup = { symbol: string; name: string; asset?: string }[];

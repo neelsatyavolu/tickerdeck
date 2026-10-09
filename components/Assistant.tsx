@@ -34,7 +34,7 @@ export function useAssistant(): Ctx {
 function focusFromPath(path: string): Focus {
   const p = path.match(/^\/p\/([0-9a-f-]{36})/);
   if (p) return { portfolioId: p[1] };
-  const s = path.match(/^\/s\/([A-Za-z0-9.-]{1,10})/);
+  const s = path.match(/^\/s\/((?:%5E|\^)?[A-Za-z0-9.-]{1,10})/i);
   if (s) return { symbol: decodeURIComponent(s[1]).toUpperCase() };
   return {};
 }

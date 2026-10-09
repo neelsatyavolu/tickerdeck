@@ -30,3 +30,29 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
 export function postJson<T>(url: string, payload: unknown): Promise<T> {
   return api<T>(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }
+
+type CacheEntry = { expires: number; value: Promise<unknown> };
+const getCache = new Map<string, CacheEntry>();
+
+/**
+ * GET with a short browser-side cache and in-flight de-duplication, so moving
+ * between pages (or two panels asking for the same thing) doesn't refetch.
+ * Errors aren't cached.
+ */
+export function cachedApi<T>(url: string, ttlMs: number): Promise<T> {
+  const now = Date.now();
+  const hit = getCache.get(url);
+  if (hit && hit.expires > now) return hit.value as Promise<T>;
+  const value = api<T>(url);
+  getCache.set(url, { expires: now + ttlMs, value });
+  value.catch(() => {
+    if (getCache.get(url)?.value === value) getCache.delete(url);
+  });
+  return value;
+}
+
+/** Synchronous peek at a cached GET, so a revisited page can render immediately. */
+export function peekCached<T>(url: string): Promise<T> | null {
+  const hit = getCache.get(url);
+  return hit && hit.expires > Date.now() ? (hit.value as Promise<T>) : null;
+}

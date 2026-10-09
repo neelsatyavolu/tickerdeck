@@ -30,8 +30,19 @@ test("watch symbols without holding them", async ({ page }) => {
   await expect(page.getByRole("row", { name: /^NVDA/ })).toBeVisible();
   await expect(page.getByText("3 symbols")).toBeVisible();
 
+  // Market indexes: one click to watch, priced via CNBC, with their own page.
+  await page.getByRole("button", { name: "+ S&P 500" }).click();
+  const spx = page.getByRole("row", { name: /^\^GSPC/ });
+  await expect(spx).toBeVisible();
+  await expect(spx).toContainText("$");
+  await page.getByRole("link", { name: "^GSPC", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "^GSPC", exact: true })).toBeVisible();
+  await expect(page.getByText(/Market index/)).toBeVisible();
+  await expect(page.getByRole("img", { name: /\^GSPC price/ })).toBeVisible();
+  await page.getByRole("link", { name: "Watchlist" }).click();
+
   await page.getByRole("button", { name: "Stop watching AAPL" }).click();
   await expect(page.getByRole("row", { name: /^AAPL/ })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByText("2 symbols")).toBeVisible();
+  await expect(page.getByText("3 symbols")).toBeVisible();
 });

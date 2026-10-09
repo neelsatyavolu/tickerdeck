@@ -62,7 +62,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
       e.preventDefault();
       const match = shown[active];
       const pick = match?.symbol ?? q.trim().toUpperCase();
-      if (/^[A-Z][A-Z0-9.-]{0,9}$/.test(pick)) choose(pick, match?.name);
+      if (/^([A-Z][A-Z0-9.-]{0,9}|\^[A-Z0-9]{2,6})$/.test(pick)) choose(pick, match?.name);
     } else if (e.key === "Escape") {
       setOpen(false);
     }

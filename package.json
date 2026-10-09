@@ -17,6 +17,7 @@
     "@neelsatyavolu/shared-ai-auth": "github:neelsatyavolu/shared-ai-auth#31ac039",
     "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/serverless": "^1.2.0",
+    "@vercel/functions": "^3.9.11",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

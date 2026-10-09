@@ -22,12 +22,15 @@ export function PageGate({ title, steps, children, maxWaitMs = 20_000 }: Props) 
   const allDone = done === steps.length;
   const [revealed, setRevealed] = useState(allDone);
   const [timedOut, setTimedOut] = useState(false);
+  const [mountedAt] = useState(() => Date.now());
 
   useEffect(() => {
     if (!allDone) return;
-    const t = setTimeout(() => setRevealed(true), 250); // let the bar visibly finish
+    // Cached pages finish almost at once: show them immediately. Otherwise let
+    // the bar visibly reach 100% first.
+    const t = setTimeout(() => setRevealed(true), Date.now() - mountedAt < 300 ? 0 : 200);
     return () => clearTimeout(t);
-  }, [allDone]);
+  }, [allDone, mountedAt]);
 
   useEffect(() => {
     const t = setTimeout(() => setTimedOut(true), maxWaitMs);

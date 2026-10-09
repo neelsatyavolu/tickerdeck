@@ -25,7 +25,9 @@ const SNAPSHOT_EVERY = 60_000;
 const FLUSH_EVERY = 400;
 const QUIET_AFTER = 90_000;
 const SNAPSHOT_BATCH = 50;
-const SYMBOL_RE = /^[A-Z][A-Z0-9.-]{0,9}$/;
+const SYMBOL_RE = /^([A-Z][A-Z0-9.-]{0,9}|\^[A-Z0-9]{2,6})$/;
+// Indexes (^GSPC) aren't on Finnhub's free trade stream; they refresh by snapshot.
+const streamable = (s: string) => !s.startsWith("^");
 
 export function LivePricesProvider({ children }: { children: React.ReactNode }) {
   const [prices, setPrices] = useState<Record<string, LivePrice>>({});
@@ -121,7 +123,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         retry = 0;
         setSocketOpen(true);
         subscribed.current.clear();
-        for (const s of counts.current.keys()) {
+        for (const s of [...counts.current.keys()].filter(streamable)) {
           socket.send(JSON.stringify({ type: "subscribe", symbol: s }));
           subscribed.current.add(s);
         }
@@ -160,7 +162,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const socket = ws.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    const want = new Set(watched);
+    const want = new Set(watched.filter(streamable));
     for (const s of want) {
       if (!subscribed.current.has(s)) {
         socket.send(JSON.stringify({ type: "subscribe", symbol: s }));

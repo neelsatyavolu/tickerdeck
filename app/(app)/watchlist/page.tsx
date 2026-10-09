@@ -8,9 +8,10 @@ import { PageGate } from "@/components/PageGate";
 import { SymbolSearch } from "@/components/SymbolSearch";
 import { ErrorText } from "@/components/ui";
 import { useWatchlist } from "@/components/Watchlist";
-import { api } from "@/lib/client/api";
+import { cachedApi } from "@/lib/client/api";
 import { pct, tone, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
+import { INDEXES } from "@/lib/market/indexes";
 import type { Overview } from "@/lib/market/overview";
 
 type SortKey = "added" | "symbol" | "price" | "day" | "r1m" | "r3m" | "ytd" | "r1y" | "range";
@@ -44,7 +45,7 @@ function useOverviews(symbols: string[]) {
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
-    api<Record<string, Overview | null>>(`/api/market/overview?symbols=${encodeURIComponent(key)}`)
+    cachedApi<Record<string, Overview | null>>(`/api/market/overview?symbols=${encodeURIComponent(key)}`, 5 * 60_000)
       .then((map) => !cancelled && setData((prev) => ({ key, map: { ...(prev?.map ?? {}), ...map } })))
       .catch(() => !cancelled && setData((prev) => ({ key, map: prev?.map ?? {} })));
     return () => {
@@ -150,6 +151,17 @@ export default function WatchlistPage() {
         <SymbolSearch placeholder="Add a ticker or company" onSelect={onAdd} width={280} />
       </div>
       <ErrorText error={error ?? actionError} />
+
+      {INDEXES.some((i) => !items.some((w) => w.symbol === i.symbol)) && (
+        <div className="row" style={{ marginTop: 16, gap: 6 }} aria-label="Add a market index">
+          <span className="label" style={{ marginRight: 4 }}>Indexes</span>
+          {INDEXES.filter((i) => !items.some((w) => w.symbol === i.symbol)).map((i) => (
+            <button key={i.symbol} className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} onClick={() => onAdd(i.symbol, i.name)}>
+              + {i.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="empty" style={{ marginTop: 24 }}>

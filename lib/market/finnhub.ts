@@ -130,3 +130,15 @@ export function peers(symbol: string): Promise<string[]> {
     return (Array.isArray(rows) ? rows : []).filter((p) => p !== symbol && /^[A-Z][A-Z0-9.-]{0,9}$/.test(p)).slice(0, 10);
   });
 }
+
+/** General market headlines (used on index pages, which have no company news). */
+export function marketNews(): Promise<NewsItem[]> {
+  return memo("fh:marketnews", NEWS_TTL, async () => {
+    const rows = await get<RawNews[]>("news", { category: "general" });
+    return (Array.isArray(rows) ? rows : [])
+      .filter((n) => n.headline && n.url?.startsWith("https://"))
+      .sort((a, b) => b.datetime - a.datetime)
+      .slice(0, 12)
+      .map((n) => ({ time: n.datetime * 1000, headline: n.headline, source: n.source, url: n.url, summary: n.summary?.slice(0, 400) ?? "" }));
+  });
+}

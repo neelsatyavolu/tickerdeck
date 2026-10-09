@@ -1,5 +1,6 @@
 import { fail, ok, withUser } from "@/lib/api";
-import { earnings, metrics, news, peers, profile, recommendations } from "@/lib/market/finnhub";
+import { earnings, marketNews, metrics, news, peers, profile, recommendations } from "@/lib/market/finnhub";
+import { indexInfo } from "@/lib/market/indexes";
 import { summary } from "@/lib/market/nasdaq";
 import { analystTargets, quote } from "@/lib/market/sources";
 import { buildKeyStats } from "@/lib/market/stats";
@@ -24,6 +25,22 @@ export function GET(_req: Request, { params }: { params: Promise<{ symbol: strin
     const parsed = symbolSchema.safeParse((await params).symbol);
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     const symbol = parsed.data;
+    const index = indexInfo(symbol);
+    if (index) {
+      const [q, headlines] = await Promise.all([settle(quote(symbol)), settle(marketNews())]);
+      const none = { value: null, error: null };
+      return ok({
+        symbol,
+        quote: q,
+        profile: none,
+        stats: { value: { ...buildKeyStats({}, null), name: index.name, assetClass: "index" as const }, error: null },
+        targets: none,
+        recommendations: none,
+        news: headlines,
+        earnings: none,
+        peers: none,
+      });
+    }
     const [q, p, targets, recs, headlines, m, s, e, pe] = await Promise.all([
       settle(quote(symbol)),
       settle(profile(symbol)),

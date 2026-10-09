@@ -14,7 +14,7 @@ import { WatchButton } from "@/components/Watchlist";
 import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
 import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
-import { api } from "@/lib/client/api";
+import { cachedApi } from "@/lib/client/api";
 import { addHolding } from "@/lib/client/portfolios";
 import { timeAgo, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
@@ -54,7 +54,7 @@ export default function StockPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api<StockInfo>(`/api/market/stock/${encodeURIComponent(symbol)}`)
+    cachedApi<StockInfo>(`/api/market/stock/${encodeURIComponent(symbol)}`, 2 * 60_000)
       .then((d) => !cancelled && setLoaded({ symbol, info: d, error: null }))
       .catch((err) => !cancelled && setLoaded({ symbol, info: null, error: err instanceof Error ? err.message : "Could not load." }));
     return () => {
@@ -73,8 +73,9 @@ export default function StockPage() {
   const targetHistory = useMemo(() => (info?.targets.value?.history ?? []).map((p) => ({ t: p.t, v: p.target })), [info]);
   const stats = info?.stats.value;
   const name = stats?.name ?? info?.profile.value?.name ?? null;
-  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : null].filter(Boolean).join(" · ");
+  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : stats?.assetClass === "index" ? "Market index" : null].filter(Boolean).join(" · ");
   const rec = info?.recommendations.value?.[0];
+  const isIndexPage = stats?.assetClass === "index";
   const steps = [
     { label: "Company details", done: info !== null },
     { label: "Price history", done: all.length > 0 || failed.length > 0 },
@@ -113,7 +114,7 @@ export default function StockPage() {
         <button className="btn btn-ghost" onClick={() => ask(`What should I know about $${symbol} right now?`, { symbol })}>Ask about {symbol}</button>
         <WatchButton symbol={symbol} name={name} />
         <a className="btn btn-ghost" href={yahooUrl(symbol)} target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>
-        <AddToPortfolio symbol={symbol} />
+        {!isIndexPage && <AddToPortfolio symbol={symbol} />}
       </div>
 
       <div style={{ marginTop: 24 }}>
@@ -134,10 +135,10 @@ export default function StockPage() {
         )}
       </section>
 
-      <section className="section">
+      {!isIndexPage && <section className="section">
         <div className="spread"><h2 className="display">Key statistics</h2></div>
         {!info ? <div className="notice">Loading</div> : stats ? <KeyStatsGrid stats={stats} price={price} /> : <div className="notice">{info.stats.error ?? "No statistics for this symbol."}</div>}
-      </section>
+      </section>}
 
       <section className="section">
         <div className="spread"><h2 className="display">Forecast</h2></div>
@@ -146,10 +147,11 @@ export default function StockPage() {
           runKey={`${symbol}:${price !== null}`}
           history={yearPoints}
           onSettled={onForecastSettled}
-          onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range, analyst targets and recent headlines, and name what would move it toward each case.`, { symbol })}
+          onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range${isIndexPage ? "" : ", analyst targets"} and recent headlines, and name what would move it toward each case.`, { symbol })}
         />
       </section>
 
+      {!isIndexPage && <>
       <section className="section">
         <div className="spread"><h2 className="display">Analysts</h2></div>
         <div className="grid-cells cols-2">
@@ -168,9 +170,10 @@ export default function StockPage() {
         <div className="spread"><h2 className="display">Earnings</h2></div>
         {!info ? <div className="notice">Loading</div> : <EarningsChart rows={info.earnings.value ?? []} />}
       </section>
+      </>}
 
       <section className="section">
-        <div className="spread"><h2 className="display">News</h2></div>
+        <div className="spread"><h2 className="display">{isIndexPage ? "Market news" : "News"}</h2></div>
         {!info ? (
           <div className="notice">Loading</div>
         ) : info.news.value?.length ? (
@@ -187,10 +190,12 @@ export default function StockPage() {
         )}
       </section>
 
-      <section className="section">
-        <div className="spread"><h2 className="display">Peers</h2></div>
-        {!info ? <div className="notice">Loading</div> : <Peers symbols={info.peers.value ?? []} />}
-      </section>
+      {!isIndexPage && (
+        <section className="section">
+          <div className="spread"><h2 className="display">Peers</h2></div>
+          {!info ? <div className="notice">Loading</div> : <Peers symbols={info.peers.value ?? []} />}
+        </section>
+      )}
 
       <section className="section">
         <div className="spread"><h2 className="display">More on Yahoo Finance</h2></div>

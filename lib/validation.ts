@@ -1,12 +1,21 @@
 import { z } from "zod";
 import { PORTFOLIO_KINDS } from "./portfolio/types";
 import { HORIZONS } from "./forecast/montecarlo";
+import { isIndex } from "./market/indexes";
 
-export const symbolSchema = z
+/** Something you can own: a US stock, ETF or mutual fund. */
+export const tickerSchema = z
   .string()
   .trim()
   .toUpperCase()
   .regex(/^[A-Z][A-Z0-9.-]{0,9}$/, "Use a US ticker like AAPL or BRK.B");
+
+/** Anything you can look at or watch: a ticker, or a market index like ^GSPC. */
+export const symbolSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .refine((s) => /^[A-Z][A-Z0-9.-]{0,9}$/.test(s) || isIndex(s), "Use a US ticker like AAPL, or an index like ^GSPC");
 
 export const symbolListSchema = z
   .string()
@@ -29,7 +38,12 @@ export const portfolioInputSchema = z
   }));
 
 export const holdingInputSchema = z.object({
-  symbol: symbolSchema,
+  symbol: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((s) => !isIndex(s), "You can't hold an index; add it to your watchlist instead")
+    .pipe(tickerSchema),
   shares: z.coerce.number().min(0, "Shares can't be negative").max(1e12),
   cost_basis: z.coerce.number().min(0, "Cost can't be negative").max(1e9),
   bought_at: isoDate.nullable().optional(),
