@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { SymbolSearch } from "@/components/SymbolSearch";
 import { ErrorText } from "@/components/ui";
+import { useOverviews } from "@/components/useOverviews";
 import { useWatchlist } from "@/components/Watchlist";
-import { cachedApi } from "@/lib/client/api";
 import { prefetchStock } from "@/lib/client/prefetch";
 import { pct, tone, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
@@ -39,22 +39,6 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "r1y", label: "1Y" },
   { key: "range", label: "52-wk range" },
 ];
-
-function useOverviews(symbols: string[]) {
-  const key = [...symbols].sort().join(",");
-  const [data, setData] = useState<{ key: string; map: Record<string, Overview | null> } | null>(null);
-  useEffect(() => {
-    if (!key) return;
-    let cancelled = false;
-    cachedApi<Record<string, Overview | null>>(`/api/market/overview?symbols=${encodeURIComponent(key)}`, 5 * 60_000)
-      .then((map) => !cancelled && setData((prev) => ({ key, map: { ...(prev?.map ?? {}), ...map } })))
-      .catch(() => !cancelled && setData((prev) => ({ key, map: prev?.map ?? {} })));
-    return () => {
-      cancelled = true;
-    };
-  }, [key]);
-  return { map: data?.map ?? {}, ready: !key || data?.key === key };
-}
 
 function RangeCell({ low, high, price }: { low: number | null; high: number | null; price: number | null }) {
   if (low === null || high === null || price === null || high <= low) return <span className="faint">—</span>;

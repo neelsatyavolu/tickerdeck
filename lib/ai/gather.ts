@@ -5,6 +5,7 @@ import { analystTargets, quote, quotes } from "../market/sources";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "../portfolio/math";
 import { listPortfolios } from "../portfolio/repo";
 import { listWatchlist } from "../watchlist/repo";
+import { listDashboards } from "../dashboard/repo";
 import type { Quote } from "../portfolio/types";
 import { mentionedSymbols, type ContextInput, type SymbolContext } from "./context";
 
@@ -38,9 +39,13 @@ async function symbolContext(symbol: string): Promise<SymbolContext | null> {
 /** Everything the assistant should know for this turn. Failures degrade to less context, never to an error. */
 export async function gatherContext(
   userId: string,
-  opts: { lastUserMessage: string; focusPortfolioId?: string; focusSymbol?: string },
+  opts: { lastUserMessage: string; focusPortfolioId?: string; focusSymbol?: string; focusDashboardId?: string },
 ): Promise<ContextInput> {
-  const [portfolios, watchlist] = await Promise.all([listPortfolios(userId), listWatchlist(userId).catch(() => [])]);
+  const [portfolios, watchlist, dashboards] = await Promise.all([
+    listPortfolios(userId),
+    listWatchlist(userId).catch(() => []),
+    listDashboards(userId).catch(() => []),
+  ]);
   const symbols = [...new Set([...uniqueSymbols(portfolios), ...watchlist.map((w) => w.symbol)])].slice(0, MAX_PORTFOLIO_SYMBOLS);
   const snap = symbols.length ? await quotes(symbols).catch(() => ({ quotes: [], failed: symbols })) : { quotes: [] };
   const priceMap: Record<string, Quote> = Object.fromEntries(snap.quotes.map((q) => [q.symbol, { price: q.price, prevClose: q.prevClose }]));
@@ -59,6 +64,8 @@ export async function gatherContext(
     now: new Date(),
     focusPortfolioId: opts.focusPortfolioId,
     portfolios: contexts,
+    dashboards: dashboards.map((d) => ({ id: d.id, name: d.name, panels: d.panels.map((p) => ({ type: p.type, title: p.title, symbols: p.symbols })) })),
+    focusDashboardId: opts.focusDashboardId,
     watchlist: watchlist.map((w) => ({ symbol: w.symbol, name: w.name, price: priceMap[w.symbol]?.price ?? null, prevClose: priceMap[w.symbol]?.prevClose ?? null })),
     symbols: symbolContexts,
   };

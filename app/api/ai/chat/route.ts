@@ -27,6 +27,7 @@ export function POST(req: Request) {
       lastUserMessage: lastUser,
       focusPortfolioId: focus?.portfolioId,
       focusSymbol: focus?.symbol,
+      focusDashboardId: focus?.dashboardId,
     });
 
     const stream = streamChat({

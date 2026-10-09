@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ProposalCard } from "./dashboard/ProposalCard";
+import { extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
 type Provider = "codex" | "grok";
 type Msg = { role: "user" | "assistant"; content: string };
-type Focus = { portfolioId?: string; symbol?: string };
+type Focus = { portfolioId?: string; symbol?: string; dashboardId?: string };
 type Status = Record<Provider, boolean>;
 type Models = Record<Provider, { id: string; label: string }[]>;
 
@@ -34,6 +36,8 @@ export function useAssistant(): Ctx {
 function focusFromPath(path: string): Focus {
   const p = path.match(/^\/p\/([0-9a-f-]{36})/);
   if (p) return { portfolioId: p[1] };
+  const d = path.match(/^\/d\/([0-9a-f-]{36})/);
+  if (d) return { dashboardId: d[1] };
   const s = path.match(/^\/s\/((?:%5E|\^)?[A-Za-z0-9.-]{1,10})/i);
   if (s) return { symbol: decodeURIComponent(s[1]).toUpperCase() };
   return {};
@@ -74,6 +78,21 @@ const MD_COMPONENTS = {
     <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
   ),
 };
+
+/** An assistant reply: prose, plus any proposed dashboard panels as action cards. */
+function Reply({ text, dashboardId }: { text: string; dashboardId?: string }) {
+  // While streaming, hide a panel block until its closing fence arrives.
+  const open = text.lastIndexOf("```" + PANEL_FENCE);
+  const complete = open === -1 || text.indexOf("```", open + 3 + PANEL_FENCE.length) !== -1;
+  const { prose, proposals } = extractProposals(complete ? text : text.slice(0, open));
+  return (
+    <>
+      {prose && <Markdown text={prose} />}
+      {proposals.map((p, i) => <ProposalCard key={i} proposal={p} defaultDashboardId={dashboardId} />)}
+      {!complete && <div className="notice">Drafting panels<span className="caret" aria-hidden="true" /></div>}
+    </>
+  );
+}
 
 function Markdown({ text }: { text: string }) {
   return (
@@ -223,7 +242,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       {children}
       {!open && (
         <button className="btn btn-primary sheet-launcher" onClick={() => setOpen(true)} aria-haspopup="dialog">
-          Ask AI{focus.symbol ? ` about ${focus.symbol}` : focus.portfolioId ? " about this portfolio" : ""}
+          Ask AI{focus.symbol ? ` about ${focus.symbol}` : focus.portfolioId ? " about this portfolio" : focus.dashboardId ? " about this dashboard" : ""}
         </button>
       )}
       <aside className="sheet" data-open={open} role="dialog" aria-label="AI assistant" aria-hidden={!open}>
@@ -257,7 +276,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               <p className="serif muted" style={{ fontSize: 17, margin: 0 }}>
                 Ask about your portfolios, a ticker, or the forecasts. It sees your holdings, live prices, analyst data and recent news{focus.symbol ? `, focused on ${focus.symbol}` : focus.portfolioId ? ", focused on this portfolio" : ""}.
               </p>
-              {["How is my portfolio doing today, and what's driving it?", "Which position is most concentrated or riskiest?", focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "Summarise recent news for my holdings."].map((s) => (
+              {["How is my portfolio doing today, and what's driving it?", "Which position is most concentrated or riskiest?", focus.dashboardId ? "Add panels comparing my holdings with the S&P 500 and showing today's movers." : focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "Summarise recent news for my holdings."].map((s) => (
                 <button key={s} className="btn btn-ghost" style={{ justifyContent: "flex-start", textAlign: "left" }} onClick={() => ask(s)}>{s}</button>
               ))}
             </div>
@@ -267,7 +286,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 <div key={i} className="msg-user">{m.content}</div>
               ) : (
                 <div key={i} className="prose">
-                  {m.content ? <Markdown text={m.content} /> : <span className="caret" aria-label="Thinking" />}
+                  {m.content ? <Reply text={m.content} dashboardId={focus.dashboardId} /> : <span className="caret" aria-label="Thinking" />}
                 </div>
               ),
             )

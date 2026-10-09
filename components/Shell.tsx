@@ -6,6 +6,7 @@ import { AssistantProvider } from "./Assistant";
 import { LivePricesProvider } from "./LivePrices";
 import { PortfoliosProvider } from "./Portfolios";
 import { SymbolSearch } from "./SymbolSearch";
+import { DashboardsProvider } from "./Dashboards";
 import { WatchlistProvider } from "./Watchlist";
 import { FeedBadge } from "./ui";
 
@@ -18,6 +19,7 @@ function TopBar() {
         <Link href="/" className="brand">tickerdeck</Link>
         <nav className="nav" aria-label="Main">
           <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Portfolios</Link>
+          <Link href="/d" aria-current={pathname.startsWith("/d") ? "page" : undefined}>Dashboards</Link>
           <Link href="/watchlist" aria-current={pathname === "/watchlist" ? "page" : undefined}>Watchlist</Link>
           <Link href="/settings" aria-current={pathname === "/settings" ? "page" : undefined}>Settings</Link>
         </nav>
@@ -34,10 +36,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <LivePricesProvider>
       <PortfoliosProvider>
         <WatchlistProvider>
-          <AssistantProvider>
-            <TopBar />
-            <main className="page">{children}</main>
-          </AssistantProvider>
+          <DashboardsProvider>
+            <AssistantProvider>
+              <TopBar />
+              <main className="page">{children}</main>
+            </AssistantProvider>
+          </DashboardsProvider>
         </WatchlistProvider>
       </PortfoliosProvider>
     </LivePricesProvider>

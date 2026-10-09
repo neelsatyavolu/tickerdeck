@@ -19,13 +19,14 @@ type Props = {
   onAskOutlook?: () => void;
   /** Called once a forecast has resolved (with a result or an error), for page loaders. */
   onSettled?: () => void;
+  initialHorizon?: Horizon;
 };
 
 const HORIZON_LABEL: Record<Horizon, string> = { "1w": "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", "1y": "1 year" };
 const HORIZON_KEYS = Object.keys(HORIZONS) as Horizon[];
 
-export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSettled }: Props) {
-  const [horizon, setHorizon] = useState<Horizon>("3m");
+export function ForecastPanel({ exposures, runKey, history, onAskOutlook, onSettled, initialHorizon = "3m" }: Props) {
+  const [horizon, setHorizon] = useState<Horizon>(initialHorizon);
   const [result, setResult] = useState<{ id: string; forecast: Forecast | null; error: string | null } | null>(null);
   const latest = useRef(exposures);
   const ready = exposures.some((e) => e.value > 0);

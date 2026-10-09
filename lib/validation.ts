@@ -63,7 +63,7 @@ export const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1).max(40),
   /** Page the user is looking at, so the assistant can focus on it. */
   focus: z
-    .object({ portfolioId: z.uuid().optional(), symbol: symbolSchema.optional() })
+    .object({ portfolioId: z.uuid().optional(), symbol: symbolSchema.optional(), dashboardId: z.uuid().optional() })
     .optional(),
 });
 

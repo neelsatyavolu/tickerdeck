@@ -40,7 +40,8 @@ describe("buildSystemPrompt", () => {
       }],
     });
     expect(prompt).toContain("Today is 2026-10-08");
-    expect(prompt).toContain("### Core (currently open)");
+    expect(prompt).toContain("### Core (currently open) [portfolioId p1]");
+    expect(prompt).toContain("```tickerdeck-panels");
     expect(prompt).toContain("- AAPL: 10 sh @ avg $100.00 · price $150.00 (+7.14% today) · value $1,500.00 · gain $500.00 (+50.00%)");
     expect(prompt).toContain("analyst targets: low $120.00 · mean $170.00");
     expect(prompt).toContain("2026-10-07 Reuters: Apple ships thing");
