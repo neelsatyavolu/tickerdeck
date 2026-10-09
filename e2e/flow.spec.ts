@@ -26,7 +26,13 @@ test("sign up, create a portfolio, add a holding, see a live price and forecast"
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
+  // Home pulls markets, money, movers and news together.
+  await expect(page.getByRole("list", { name: "Markets" }).getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("region", { name: "Market news" }).locator("article").first()).toBeVisible({ timeout: 30_000 });
+
+  await page.getByRole("link", { name: "Portfolios", exact: true }).click();
   await expect(page.getByText("All portfolios")).toBeVisible();
   await page.getByRole("button", { name: "New portfolio" }).first().click();
   await page.getByLabel("Name").fill("E2E Core");

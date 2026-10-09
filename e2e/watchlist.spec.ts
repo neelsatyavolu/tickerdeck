@@ -10,7 +10,7 @@ test("watch symbols without holding them", async ({ page }) => {
   await page.getByLabel("Email").fill(`e2e-watch+${Date.now()}@tickerdeck.test`);
   await page.getByLabel("Password").fill(`e2e-${Math.random().toString(36).slice(2)}-pass`);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("All portfolios")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("link", { name: "Watchlist" }).click();
   await expect(page.getByRole("heading", { name: "Watchlist" })).toBeVisible();

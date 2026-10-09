@@ -63,7 +63,7 @@ export default function PortfolioPage() {
     return (
       <div className="empty">
         <p>This portfolio doesn&apos;t exist or was deleted.</p>
-        <Link className="btn btn-primary" href="/">Back to portfolios</Link>
+        <Link className="btn btn-primary" href="/portfolios">Back to portfolios</Link>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function PortfolioPage() {
     if (!window.confirm(`Delete "${portfolio.name}" and all its holdings?`)) return;
     try {
       await mutate(() => deletePortfolio(portfolio.id));
-      router.push("/");
+      router.push("/portfolios");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete.");
     }

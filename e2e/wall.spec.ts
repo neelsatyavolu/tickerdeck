@@ -12,7 +12,7 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   await page.getByLabel("Email").fill(`e2e-wall+${Date.now()}@tickerdeck.test`);
   await page.getByLabel("Password").fill(`e2e-${Math.random().toString(36).slice(2)}-pass`);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("All portfolios")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
   // ChatGPT sign-in is a real link that opens a new tab.
   await page.getByRole("link", { name: "Settings" }).click();

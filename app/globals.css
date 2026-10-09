@@ -311,3 +311,13 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 .switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
 .switch-knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--fg); transition: transform 150ms var(--ease); }
 .switch[aria-checked="true"] .switch-knob { transform: translateX(18px); background: #0e0e0d; }
+
+/* Home */
+.home-markets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 24px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.home-market { display: block; padding: 12px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 0; }
+.home-market:hover { background: var(--surface-hover); text-decoration: none; }
+.home-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 16px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.home-row:last-child { border-bottom: none; }
+.home-row:hover { text-decoration: none; background: var(--surface-hover); }
+.home-row .num { text-align: right; min-width: 72px; }
+@media (max-width: 900px) { .home-markets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

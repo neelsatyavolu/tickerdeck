@@ -14,8 +14,9 @@ test("import a Yahoo Finance CSV into a new portfolio", async ({ page }) => {
   await page.getByLabel("Email").fill(`e2e-import+${Date.now()}@tickerdeck.test`);
   await page.getByLabel("Password").fill(`e2e-${Math.random().toString(36).slice(2)}-pass`);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("All portfolios")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible({ timeout: 30_000 });
 
+  await page.goto("/portfolios");
   await page.getByRole("button", { name: "Import CSV" }).first().click();
   await page.getByLabel("CSV file").setInputFiles(fixture);
   await expect(page.getByText(/6 lots across 5 symbols/)).toBeVisible({ timeout: 30_000 });
