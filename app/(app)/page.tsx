@@ -188,7 +188,7 @@ export default function Home() {
             {recentDashboards.map((d) => (
               <Link key={d.id} href={`/d/${d.id}`} className="home-row">
                 <span style={{ fontWeight: 500 }}>{d.name}</span>
-                <span className="faint mono" style={{ fontSize: 11 }}>{d.panels.length} panels · {timeAgo(Date.parse(d.updated_at))}</span>
+                <span className="faint mono" style={{ fontSize: 11 }}>{d.panels.length} panel{d.panels.length === 1 ? "" : "s"} · {timeAgo(Date.parse(d.updated_at))}</span>
               </Link>
             ))}
             <div className="row" style={{ gap: 6, marginTop: 12 }}>
