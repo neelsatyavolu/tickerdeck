@@ -10,6 +10,7 @@ import { HoldingForm } from "@/components/HoldingForm";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { usePortfolios } from "@/components/Portfolios";
+import { WatchButton } from "@/components/Watchlist";
 import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
 import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
@@ -110,6 +111,7 @@ export default function StockPage() {
 
       <div className="row" style={{ marginTop: 16 }}>
         <button className="btn btn-ghost" onClick={() => ask(`What should I know about $${symbol} right now?`, { symbol })}>Ask about {symbol}</button>
+        <WatchButton symbol={symbol} name={name} />
         <a className="btn btn-ghost" href={yahooUrl(symbol)} target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>
         <AddToPortfolio symbol={symbol} />
       </div>

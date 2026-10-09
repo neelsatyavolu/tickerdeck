@@ -47,6 +47,12 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("cannot change portfolios");
   });
 
+  it("lists the watchlist separately from holdings", () => {
+    const prompt = buildSystemPrompt({ now: new Date(), portfolios: [], symbols: [], watchlist: [{ symbol: "VTSAX", name: "Vanguard Total", price: 184.77, prevClose: 185.53 }] });
+    expect(prompt).toContain("## Watchlist (followed, not held)");
+    expect(prompt).toContain("- VTSAX (Vanguard Total): price $184.77 (-0.41% today)");
+  });
+
   it("says so when there are no portfolios", () => {
     const prompt = buildSystemPrompt({ now: new Date(), portfolios: [], symbols: [] });
     expect(prompt).toContain("no portfolios yet");

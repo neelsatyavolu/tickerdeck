@@ -4,6 +4,7 @@ import { news, profile, recommendations } from "../market/finnhub";
 import { analystTargets, quote, quotes } from "../market/sources";
 import { aggregatePositions, portfolioTotals, uniqueSymbols } from "../portfolio/math";
 import { listPortfolios } from "../portfolio/repo";
+import { listWatchlist } from "../watchlist/repo";
 import type { Quote } from "../portfolio/types";
 import { mentionedSymbols, type ContextInput, type SymbolContext } from "./context";
 
@@ -39,8 +40,8 @@ export async function gatherContext(
   userId: string,
   opts: { lastUserMessage: string; focusPortfolioId?: string; focusSymbol?: string },
 ): Promise<ContextInput> {
-  const portfolios = await listPortfolios(userId);
-  const symbols = uniqueSymbols(portfolios).slice(0, MAX_PORTFOLIO_SYMBOLS);
+  const [portfolios, watchlist] = await Promise.all([listPortfolios(userId), listWatchlist(userId).catch(() => [])]);
+  const symbols = [...new Set([...uniqueSymbols(portfolios), ...watchlist.map((w) => w.symbol)])].slice(0, MAX_PORTFOLIO_SYMBOLS);
   const snap = symbols.length ? await quotes(symbols).catch(() => ({ quotes: [], failed: symbols })) : { quotes: [] };
   const priceMap: Record<string, Quote> = Object.fromEntries(snap.quotes.map((q) => [q.symbol, { price: q.price, prevClose: q.prevClose }]));
 
@@ -54,5 +55,11 @@ export async function gatherContext(
   const focus = [...new Set([opts.focusSymbol, ...mentionedSymbols(opts.lastUserMessage), ...largest].filter((s): s is string => Boolean(s)))].slice(0, MAX_FOCUS_SYMBOLS);
   const symbolContexts = (await Promise.all(focus.map(symbolContext))).filter((s): s is SymbolContext => s !== null);
 
-  return { now: new Date(), focusPortfolioId: opts.focusPortfolioId, portfolios: contexts, symbols: symbolContexts };
+  return {
+    now: new Date(),
+    focusPortfolioId: opts.focusPortfolioId,
+    portfolios: contexts,
+    watchlist: watchlist.map((w) => ({ symbol: w.symbol, name: w.name, price: priceMap[w.symbol]?.price ?? null, prevClose: priceMap[w.symbol]?.prevClose ?? null })),
+    symbols: symbolContexts,
+  };
 }

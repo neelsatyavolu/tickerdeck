@@ -18,9 +18,12 @@ export type SymbolContext = {
   forecast: (Forecast & { horizonLabel: string }) | null;
 };
 
+export type WatchContext = { symbol: string; name: string | null; price: number | null; prevClose: number | null };
+
 export type ContextInput = {
   now: Date;
   portfolios: PortfolioContext[];
+  watchlist?: WatchContext[];
   focusPortfolioId?: string;
   symbols: SymbolContext[];
 };
@@ -100,6 +103,13 @@ export function buildSystemPrompt(input: ContextInput): string {
       ? input.portfolios.map((p) => portfolioBlock(p, p.portfolio.id === input.focusPortfolioId)).join("\n\n")
       : "The user has no portfolios yet.",
   ];
+  if (input.watchlist?.length) {
+    parts.push(
+      "",
+      "## Watchlist (followed, not held)",
+      ...input.watchlist.map((w) => `- ${w.symbol}${w.name ? ` (${w.name})` : ""}: price ${usd(w.price)} (${pct(w.price !== null && w.prevClose ? w.price / w.prevClose - 1 : null)} today)`),
+    );
+  }
   if (input.symbols.length) parts.push("", "## Symbols in focus", input.symbols.map(symbolBlock).join("\n\n"));
   return parts.join("\n");
 }

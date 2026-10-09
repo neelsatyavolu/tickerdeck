@@ -5,7 +5,7 @@ import { api } from "@/lib/client/api";
 import type { SymbolMatch } from "@/lib/market/types";
 
 type Props = {
-  onSelect: (symbol: string) => void;
+  onSelect: (symbol: string, name?: string) => void;
   placeholder?: string;
   initial?: string;
   /** Keep the chosen symbol in the box (forms) instead of clearing it (navigation). */
@@ -45,8 +45,8 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
   // Keep the last results visible while the next search is debounced.
   const shown = open && q.trim() && resultsFor ? results : [];
 
-  const choose = (symbol: string) => {
-    onSelect(symbol);
+  const choose = (symbol: string, name?: string) => {
+    onSelect(symbol, name);
     setQ(keepValue ? symbol : "");
     setOpen(false);
   };
@@ -60,8 +60,9 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const pick = shown[active]?.symbol ?? q.trim().toUpperCase();
-      if (/^[A-Z][A-Z0-9.-]{0,9}$/.test(pick)) choose(pick);
+      const match = shown[active];
+      const pick = match?.symbol ?? q.trim().toUpperCase();
+      if (/^[A-Z][A-Z0-9.-]{0,9}$/.test(pick)) choose(pick, match?.name);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -93,7 +94,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
         <ul className="search-list" id={listId} role="listbox">
           {shown.map((r, i) => (
             <li key={r.symbol}>
-              <button type="button" role="option" aria-selected={i === active} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(r.symbol)}>
+              <button type="button" role="option" aria-selected={i === active} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(r.symbol, r.name)}>
                 <span className="mono" style={{ minWidth: 64 }}>{r.symbol}</span>
                 <span className="faint" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
               </button>
