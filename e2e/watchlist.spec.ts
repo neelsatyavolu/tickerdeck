@@ -45,4 +45,24 @@ test("watch symbols without holding them", async ({ page }) => {
   await expect(page.getByRole("row", { name: /^AAPL/ })).toHaveCount(0);
   await page.reload();
   await expect(page.getByText("3 symbols")).toBeVisible();
+
+  // Reorder with the buttons, then by dragging; the order survives a reload.
+  const order = async () => (await page.locator("tbody tr").allInnerTexts()).map((t) => t.trim().split(/\s+/)[0]);
+  expect(await order()).toEqual(["VTSAX", "NVDA", "^GSPC"]);
+  await page.getByRole("button", { name: "Move ^GSPC up" }).click();
+  await page.getByRole("button", { name: "Move ^GSPC up" }).click();
+  await expect.poll(order).toEqual(["^GSPC", "VTSAX", "NVDA"]);
+  await page.locator("tbody tr", { hasText: "NVDA" }).dragTo(page.locator("tbody tr", { hasText: "^GSPC" }), { targetPosition: { x: 20, y: 2 } });
+  await expect.poll(order).toEqual(["NVDA", "^GSPC", "VTSAX"]);
+  await page.reload();
+  await expect(page.getByText("3 symbols")).toBeVisible();
+  await expect.poll(order).toEqual(["NVDA", "^GSPC", "VTSAX"]);
+
+  // The assistant opens as a sheet from the bottom and closes with Escape.
+  await page.getByRole("button", { name: /^Ask AI/ }).click();
+  const sheet = page.getByRole("dialog", { name: "AI assistant" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText(/Connect your ChatGPT or Grok/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
 });

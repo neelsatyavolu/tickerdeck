@@ -13,13 +13,13 @@ import { prefetchStock } from "@/lib/client/prefetch";
 import { pct, tone, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { INDEXES } from "@/lib/market/indexes";
+import { moveItem } from "@/lib/reorder";
 import type { Overview } from "@/lib/market/overview";
 
-type SortKey = "added" | "symbol" | "price" | "day" | "r1m" | "r3m" | "ytd" | "r1y" | "range";
+type SortKey = "custom" | "symbol" | "price" | "day" | "r1m" | "r3m" | "ytd" | "r1y" | "range";
 type Row = {
   symbol: string;
   name: string | null;
-  added: string;
   price: number | null;
   day: number | null;
   r1m: number | null;
@@ -71,11 +71,13 @@ function RangeCell({ low, high, price }: { low: number | null; high: number | nu
 }
 
 export default function WatchlistPage() {
-  const { items, loading, error, add, remove } = useWatchlist();
+  const { items, loading, error, add, remove, reorder } = useWatchlist();
   const symbols = useMemo(() => items.map((i) => i.symbol), [items]);
   const { prices, checked } = useLivePrices(symbols);
   const { map: overviews, ready: overviewsReady } = useOverviews(symbols);
-  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "added", desc: false });
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "custom", desc: false });
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const rows: Row[] = useMemo(
@@ -87,7 +89,6 @@ export default function WatchlistPage() {
         return {
           symbol: i.symbol,
           name: i.name,
-          added: i.added_at,
           price,
           day: live && live.prevClose ? live.price / live.prevClose - 1 : null,
           r1m: o?.r1m ?? null,
@@ -103,11 +104,12 @@ export default function WatchlistPage() {
 
   const sorted = useMemo(() => {
     const dir = sort.desc ? -1 : 1;
+    const key = sort.key;
+    if (key === "custom") return rows; // the saved order
     return [...rows].sort((a, b) => {
-      if (sort.key === "added") return dir * a.added.localeCompare(b.added);
-      if (sort.key === "symbol") return dir * a.symbol.localeCompare(b.symbol);
-      const x = a[sort.key];
-      const y = b[sort.key];
+      if (key === "symbol") return dir * a.symbol.localeCompare(b.symbol);
+      const x = a[key];
+      const y = b[key];
       if (x === null) return 1; // blanks last either way
       if (y === null) return -1;
       return dir * (x - y);
@@ -116,6 +118,23 @@ export default function WatchlistPage() {
 
   const setSortKey = (key: SortKey) => setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: key !== "symbol" }));
   const arrow = (key: SortKey) => (sort.key === key ? (sort.desc ? " ↓" : " ↑") : "");
+
+  const custom = sort.key === "custom";
+
+  const move = async (from: number, to: number) => {
+    if (from === to) return;
+    setActionError(null);
+    try {
+      await reorder(moveItem(items.map((i) => i.symbol), from, to));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't save the new order.");
+    }
+  };
+
+  const endDrag = () => {
+    setDragging(null);
+    setDropAt(null);
+  };
 
   const steps = [
     { label: "Watchlist", done: !loading },
@@ -173,6 +192,7 @@ export default function WatchlistPage() {
           <table className="data">
             <thead>
               <tr>
+                <th scope="col" style={{ width: 28, paddingRight: 0 }}><span className="sr-only">Reorder</span></th>
                 <th scope="col" aria-sort={sort.key === "symbol" ? (sort.desc ? "descending" : "ascending") : "none"}>
                   <button className="btn-text" style={{ padding: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", textTransform: "inherit" }} onClick={() => setSortKey("symbol")}>Symbol{arrow("symbol")}</button>
                 </th>
@@ -186,8 +206,33 @@ export default function WatchlistPage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
-                <tr key={r.symbol}>
+              {sorted.map((r, i) => (
+                <tr
+                  key={r.symbol}
+                  draggable={custom}
+                  onDragStart={(e) => {
+                    setDragging(r.symbol);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", r.symbol);
+                  }}
+                  onDragOver={(e) => {
+                    if (!dragging) return;
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setDropAt(e.clientY < rect.top + rect.height / 2 ? i : i + 1);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = items.findIndex((x) => x.symbol === dragging);
+                    if (from !== -1 && dropAt !== null) move(from, dropAt > from ? dropAt - 1 : dropAt);
+                    endDrag();
+                  }}
+                  onDragEnd={endDrag}
+                  className={[dragging === r.symbol ? "row-dragging" : "", dropAt === i ? "drop-before" : "", dropAt === i + 1 && i === sorted.length - 1 ? "drop-after" : ""].join(" ")}
+                >
+                  <td style={{ paddingRight: 0 }}>
+                    {custom ? <span className="grip" aria-hidden="true" title="Drag to reorder" /> : null}
+                  </td>
                   <td style={{ whiteSpace: "normal", minWidth: 160 }}>
                     <Link href={`/s/${encodeURIComponent(r.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(r.symbol)}>{r.symbol}</Link>
                     <a href={yahooUrl(r.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${r.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
@@ -204,6 +249,12 @@ export default function WatchlistPage() {
                   <td className={tone(r.r1y)}>{pct(r.r1y, 1)}</td>
                   <td><RangeCell low={r.overview?.low52 ?? null} high={r.overview?.high52 ?? null} price={r.price} /></td>
                   <td>
+                    {custom && (
+                      <>
+                        <button className="btn-text" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={`Move ${r.symbol} up`} title="Move up">↑</button>
+                        <button className="btn-text" onClick={() => move(i, i + 1)} disabled={i === sorted.length - 1} aria-label={`Move ${r.symbol} down`} title="Move down">↓</button>
+                      </>
+                    )}
                     <button className="btn-text danger" onClick={() => onRemove(r.symbol)} aria-label={`Stop watching ${r.symbol}`}>Remove</button>
                   </td>
                 </tr>
@@ -212,7 +263,13 @@ export default function WatchlistPage() {
           </table>
         </div>
       )}
-      <p className="notice" style={{ marginTop: 12 }}>Returns and the 52-week range come from daily closes; Today uses the live price.</p>
+      <div className="spread" style={{ marginTop: 12 }}>
+        <p className="notice" style={{ margin: 0 }}>
+          {custom ? "Drag rows (or use ↑ ↓) to reorder. " : "Sorted by a column; switch to My order to rearrange. "}
+          Returns and the 52-week range come from daily closes; Today uses the live price.
+        </p>
+        {!custom && <button className="btn-text" onClick={() => setSort({ key: "custom", desc: false })}>My order</button>}
+      </div>
     </PageGate>
   );
 }

@@ -11,6 +11,8 @@ type Ctx = {
   isWatched: (symbol: string) => boolean;
   add: (symbol: string, name?: string | null) => Promise<void>;
   remove: (symbol: string) => Promise<void>;
+  /** Save a new order (symbols top to bottom). */
+  reorder: (symbols: string[]) => Promise<void>;
 };
 
 const WatchlistCtx = createContext<Ctx | null>(null);
@@ -68,8 +70,25 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     [apply],
   );
 
+  const reorder = useCallback(
+    async (symbols: string[]) => {
+      setItems((prev) => {
+        const bySymbol = new Map(prev.map((i) => [i.symbol, i]));
+        const ordered = symbols.map((s) => bySymbol.get(s)).filter((i): i is WatchItem => Boolean(i));
+        return [...ordered, ...prev.filter((i) => !symbols.includes(i.symbol))];
+      });
+      try {
+        await client.reorderWatchlist(symbols);
+      } catch (err) {
+        apply(await load());
+        throw err;
+      }
+    },
+    [apply],
+  );
+
   const isWatched = useCallback((symbol: string) => items.some((i) => i.symbol === symbol), [items]);
-  const value = useMemo(() => ({ items, loading, error, isWatched, add, remove }), [items, loading, error, isWatched, add, remove]);
+  const value = useMemo(() => ({ items, loading, error, isWatched, add, remove, reorder }), [items, loading, error, isWatched, add, remove, reorder]);
   return <WatchlistCtx.Provider value={value}>{children}</WatchlistCtx.Provider>;
 }
 

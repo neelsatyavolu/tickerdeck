@@ -208,11 +208,26 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const connected = status ? (Object.keys(status) as Provider[]).filter((p) => status[p]) : [];
   const focus = focusFromPath(pathname);
 
+  // Escape closes the sheet.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <AssistantCtx.Provider value={value}>
       {children}
-      <aside className="drawer" data-open={open} aria-label="AI assistant" aria-hidden={!open}>
-        <div className="drawer-head">
+      {!open && (
+        <button className="btn btn-primary sheet-launcher" onClick={() => setOpen(true)} aria-haspopup="dialog">
+          Ask AI{focus.symbol ? ` about ${focus.symbol}` : focus.portfolioId ? " about this portfolio" : ""}
+        </button>
+      )}
+      <aside className="sheet" data-open={open} role="dialog" aria-label="AI assistant" aria-hidden={!open}>
+        <div className="sheet-head">
           <span className="label" style={{ color: "var(--fg)" }}>Assistant</span>
           {connected.length > 0 && (
             <>
@@ -231,7 +246,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           {messages.length > 0 && <button className="btn-text" onClick={() => { stop(); setMessages([]); setError(null); }}>Clear</button>}
           <button className="btn-text" onClick={() => setOpen(false)} aria-label="Close assistant">Close</button>
         </div>
-        <div className="drawer-body">
+        <div className="sheet-body">
           {status && connected.length === 0 ? (
             <div className="empty">
               <p>Connect your ChatGPT or Grok subscription to ask questions about your portfolios.</p>
@@ -277,7 +292,7 @@ function Composer({ busy, onSend, onStop }: { busy: boolean; onSend: (t: string)
     setText("");
   };
   return (
-    <form className="drawer-foot" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+    <form className="sheet-foot" onSubmit={(e) => { e.preventDefault(); submit(); }}>
       <textarea
         className="input"
         value={text}

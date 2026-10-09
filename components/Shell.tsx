@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AssistantProvider, useAssistant } from "./Assistant";
+import { AssistantProvider } from "./Assistant";
 import { LivePricesProvider } from "./LivePrices";
 import { PortfoliosProvider } from "./Portfolios";
 import { SymbolSearch } from "./SymbolSearch";
@@ -12,7 +12,6 @@ import { FeedBadge } from "./ui";
 function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { open, setOpen } = useAssistant();
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -25,7 +24,6 @@ function TopBar() {
         <span className="grow" />
         <FeedBadge />
         <SymbolSearch prefetch onSelect={(s) => s && router.push(`/s/${encodeURIComponent(s)}`)} />
-        <button className="btn btn-ghost" onClick={() => setOpen(!open)} aria-expanded={open}>Ask AI</button>
       </div>
     </header>
   );
