@@ -60,3 +60,21 @@ export function memo<T>(key: string, ttlMs: number, load: () => Promise<T>): Pro
 export function clearMemo(): void {
   store.clear();
 }
+
+/** A cached value if one exists (memory, then shared), without loading anything. */
+export async function peek<T>(key: string): Promise<T | undefined> {
+  const hit = store.get(key);
+  if (hit && hit.expires > Date.now()) return (await hit.value.catch(() => undefined)) as T | undefined;
+  try {
+    const v = await sharedCache()?.get(key);
+    return v === null || v === undefined ? undefined : (v as T);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Store a value learned as a side effect of another load. */
+export function remember<T>(key: string, ttlMs: number, value: T): void {
+  store.set(key, { expires: Date.now() + ttlMs, value: Promise.resolve(value) });
+  sharedCache()?.set(key, value, { ttl: Math.max(1, Math.round(ttlMs / 1000)), name: key.split(":").slice(0, 2).join(":") }).catch(() => {});
+}

@@ -99,3 +99,20 @@ describe("parseLookup", () => {
     ]);
   });
 });
+
+import { firstClass } from "./nasdaq";
+
+describe("firstClass", () => {
+  const delay = <T,>(ms: number, v: T) => new Promise<T>((r) => setTimeout(() => r(v), ms));
+
+  it("resolves with the first class that finds something, without waiting for slower ones", async () => {
+    const t0 = Date.now();
+    const hit = await firstClass((cls) => (cls === "etf" ? delay(10, "found") : cls === "stocks" ? delay(5, null) : delay(500, "late")));
+    expect(hit).toEqual({ cls: "etf", value: "found" });
+    expect(Date.now() - t0).toBeLessThan(300);
+  });
+
+  it("resolves null when every class comes back empty or fails", async () => {
+    expect(await firstClass((cls) => (cls === "stocks" ? Promise.reject(new Error("x")) : delay(1, null)))).toBeNull();
+  });
+});

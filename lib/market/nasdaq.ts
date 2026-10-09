@@ -1,5 +1,5 @@
 import "server-only";
-import { memo } from "./cache";
+import { memo, peek, remember } from "./cache";
 import { fetchJson, UpstreamError } from "./http";
 import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
@@ -75,31 +75,57 @@ function get<T>(path: string): Promise<Envelope<T>> {
   return fetchJson<Envelope<T>>("nasdaq", `${BASE}${path}`, { headers: HEADERS, timeoutMs: 10_000 });
 }
 
-/** Nasdaq files stocks, ETFs and mutual funds separately; find which one this symbol is. */
+const CLASS_TTL = 7 * 24 * 60 * 60_000; // a symbol's asset type practically never changes
+const classKey = (symbol: string) => `nq:class:${symbol}`;
+
+/**
+ * Run a lookup for every asset class at once and settle on the first that
+ * returns something (Nasdaq calls take 1–3 s each, so never wait for the
+ * slowest). Resolves null when none do.
+ */
+export function firstClass<T>(lookup: (cls: AssetClass) => Promise<T | null>, classes: AssetClass[] = ASSET_CLASSES): Promise<{ cls: AssetClass; value: T } | null> {
+  return new Promise((resolve) => {
+    let pending = classes.length;
+    let settled = false;
+    for (const cls of classes) {
+      lookup(cls)
+        .then((value) => {
+          if (value !== null && !settled) {
+            settled = true;
+            resolve({ cls, value });
+          }
+        }, () => {})
+        .finally(() => {
+          if (--pending === 0 && !settled) resolve(null);
+        });
+    }
+  });
+}
+
+/** Which of Nasdaq's three listings (stocks, ETFs, mutual funds) a symbol is in. */
 export function assetClass(symbol: string): Promise<AssetClass | null> {
-  return memo(`nq:class:${symbol}`, SLOW_TTL, async () => {
-    // Ask all three at once; one round trip instead of up to three.
-    const found = await Promise.all(
-      ASSET_CLASSES.map((cls) =>
-        get<{ companyName?: string }>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`).then(
-          (r) => (r.data?.companyName ? cls : null),
-          () => null,
-        ),
-      ),
+  return memo(classKey(symbol), CLASS_TTL, async () => {
+    const hit = await firstClass((cls) =>
+      get<{ companyName?: string }>(`/quote/${encodeURIComponent(symbol)}/info?assetclass=${cls}`).then((r) => (r.data?.companyName ? true : null)),
     );
-    return found.find((c): c is AssetClass => c !== null) ?? null;
+    return hit?.cls ?? null;
   });
 }
 
 export function history(symbol: string, range: HistoryRange): Promise<PricePoint[]> {
   return memo(`nq:history:${symbol}:${range}`, HISTORY_TTL, async () => {
-    const cls = await assetClass(symbol);
-    if (!cls) throw new UpstreamError("nasdaq", 404, `No price history for ${symbol}`);
     const from = new Date(Date.now() - RANGE_DAYS[range] * 86_400_000).toISOString().slice(0, 10);
-    const r = await get<RawHistory>(`/quote/${encodeURIComponent(symbol)}/historical?assetclass=${cls}&fromdate=${from}&limit=9999`);
-    const points = parseHistory(r.data);
-    if (points.length === 0) throw new UpstreamError("nasdaq", 404, `No price history for ${symbol}`);
-    return points;
+    const fetchClass = async (cls: AssetClass) => {
+      const r = await get<RawHistory>(`/quote/${encodeURIComponent(symbol)}/historical?assetclass=${cls}&fromdate=${from}&limit=9999`);
+      const points = parseHistory(r.data);
+      return points.length ? points : null;
+    };
+    // Known type: one call. Unknown: ask all three at once and learn the type.
+    const known = await peek<AssetClass | null>(classKey(symbol));
+    const hit = await firstClass(fetchClass, known ? [known] : ASSET_CLASSES);
+    if (!hit) throw new UpstreamError("nasdaq", 404, `No price history for ${symbol}`);
+    if (!known) remember(classKey(symbol), CLASS_TTL, hit.cls);
+    return hit.value;
   });
 }
 
@@ -143,11 +169,16 @@ export function parseSummary(info: RawInfo | null, summary: RawSummary | null, c
 
 export function summary(symbol: string): Promise<NasdaqSummary | null> {
   return memo(`nq:summary:${symbol}`, SLOW_TTL, async () => {
-    const cls = await assetClass(symbol);
-    if (!cls) return null;
     const enc = encodeURIComponent(symbol);
-    const [info, sum] = await Promise.all([get<RawInfo>(`/quote/${enc}/info?assetclass=${cls}`), get<RawSummary>(`/quote/${enc}/summary?assetclass=${cls}`)]);
-    return parseSummary(info.data, sum.data, cls);
+    const both = (cls: AssetClass) =>
+      Promise.all([get<RawInfo>(`/quote/${enc}/info?assetclass=${cls}`), get<RawSummary>(`/quote/${enc}/summary?assetclass=${cls}`)]).then(([info, sum]) =>
+        info.data?.companyName ? { info: info.data, sum: sum.data } : null,
+      );
+    const known = await peek<AssetClass | null>(classKey(symbol));
+    const hit = await firstClass(both, known ? [known] : ASSET_CLASSES);
+    if (!hit) return null;
+    if (!known) remember(classKey(symbol), CLASS_TTL, hit.cls);
+    return parseSummary(hit.value.info, hit.value.sum, hit.cls);
   });
 }
 

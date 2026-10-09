@@ -9,6 +9,7 @@ import { SymbolSearch } from "@/components/SymbolSearch";
 import { ErrorText } from "@/components/ui";
 import { useWatchlist } from "@/components/Watchlist";
 import { cachedApi } from "@/lib/client/api";
+import { prefetchStock } from "@/lib/client/prefetch";
 import { pct, tone, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { INDEXES } from "@/lib/market/indexes";
@@ -188,7 +189,7 @@ export default function WatchlistPage() {
               {sorted.map((r) => (
                 <tr key={r.symbol}>
                   <td style={{ whiteSpace: "normal", minWidth: 160 }}>
-                    <Link href={`/s/${encodeURIComponent(r.symbol)}`} style={{ fontWeight: 500 }}>{r.symbol}</Link>
+                    <Link href={`/s/${encodeURIComponent(r.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(r.symbol)}>{r.symbol}</Link>
                     <a href={yahooUrl(r.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${r.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     {r.name && <div className="faint" style={{ fontFamily: "var(--sans)", fontSize: 12, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>}
                   </td>

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { api } from "@/lib/client/api";
+import { prefetchStock } from "@/lib/client/prefetch";
 import type { SymbolMatch } from "@/lib/market/types";
 
 type Props = {
@@ -10,11 +11,13 @@ type Props = {
   initial?: string;
   /** Keep the chosen symbol in the box (forms) instead of clearing it (navigation). */
   keepValue?: boolean;
+  /** Start loading the highlighted result's stock page before it's chosen. */
+  prefetch?: boolean;
   width?: number | string;
   inputId?: string;
 };
 
-export function SymbolSearch({ onSelect, placeholder = "Search ticker or company", initial = "", keepValue, width, inputId }: Props) {
+export function SymbolSearch({ onSelect, placeholder = "Search ticker or company", initial = "", keepValue, prefetch, width, inputId }: Props) {
   const [q, setQ] = useState(initial);
   const [results, setResults] = useState<SymbolMatch[]>([]);
   const [open, setOpen] = useState(false);
@@ -44,6 +47,13 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
 
   // Keep the last results visible while the next search is debounced.
   const shown = open && q.trim() && resultsFor ? results : [];
+  const highlighted = shown[active]?.symbol;
+
+  useEffect(() => {
+    if (!prefetch || !highlighted) return;
+    const t = setTimeout(() => prefetchStock(highlighted), 120);
+    return () => clearTimeout(t);
+  }, [prefetch, highlighted]);
 
   const choose = (symbol: string, name?: string) => {
     onSelect(symbol, name);
@@ -94,7 +104,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
         <ul className="search-list" id={listId} role="listbox">
           {shown.map((r, i) => (
             <li key={r.symbol}>
-              <button type="button" role="option" aria-selected={i === active} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(r.symbol, r.name)}>
+              <button type="button" role="option" aria-selected={i === active} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => prefetch && prefetchStock(r.symbol)} onClick={() => choose(r.symbol, r.name)}>
                 <span className="mono" style={{ minWidth: 64 }}>{r.symbol}</span>
                 <span className="faint" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
               </button>

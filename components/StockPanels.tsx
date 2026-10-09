@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { niceTicks, scale } from "@/lib/chart";
 import { pct, plainPct, tone, usd } from "@/lib/format";
+import { prefetchStock } from "@/lib/client/prefetch";
 import { YAHOO_PAGES, yahooUrl } from "@/lib/links";
 import type { PeriodReturn } from "@/lib/market/performance";
 import type { EarningsPoint, KeyStats } from "@/lib/market/types";
@@ -147,7 +148,7 @@ export function Peers({ symbols }: { symbols: string[] }) {
   return (
     <div className="row" style={{ gap: 6 }}>
       {symbols.map((s) => (
-        <Link key={s} href={`/s/${encodeURIComponent(s)}`} className="btn btn-ghost mono" style={{ padding: "4px 10px", fontSize: 13 }}>{s}</Link>
+        <Link key={s} href={`/s/${encodeURIComponent(s)}`} className="btn btn-ghost mono" style={{ padding: "4px 10px", fontSize: 13 }} onMouseEnter={() => prefetchStock(s)}>{s}</Link>
       ))}
     </div>
   );

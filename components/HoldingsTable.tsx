@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { pct, shares, signedUsd, tone, usd } from "@/lib/format";
+import { prefetchStock } from "@/lib/client/prefetch";
 import { yahooUrl } from "@/lib/links";
 import type { Position } from "@/lib/portfolio/math";
 import type { Holding, Portfolio } from "@/lib/portfolio/types";
@@ -62,7 +63,7 @@ export function HoldingsTable({ portfolio, positions }: Props) {
                       <button className="btn-text" style={{ padding: "0 6px 0 0" }} onClick={() => setExpanded(open ? null : p.symbol)} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} ${p.symbol} lots`}>
                         {open ? "−" : "+"}
                       </button>
-                      <Link href={`/s/${encodeURIComponent(p.symbol)}`} style={{ fontWeight: 500 }}>{p.symbol}</Link>
+                      <Link href={`/s/${encodeURIComponent(p.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(p.symbol)}>{p.symbol}</Link>
                       <a href={yahooUrl(p.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${p.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     </td>
                     {!isWatch && <td>{shares(p.shares)}</td>}

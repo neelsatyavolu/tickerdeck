@@ -24,7 +24,7 @@ function TopBar() {
         </nav>
         <span className="grow" />
         <FeedBadge />
-        <SymbolSearch onSelect={(s) => s && router.push(`/s/${encodeURIComponent(s)}`)} />
+        <SymbolSearch prefetch onSelect={(s) => s && router.push(`/s/${encodeURIComponent(s)}`)} />
         <button className="btn btn-ghost" onClick={() => setOpen(!open)} aria-expanded={open}>Ask AI</button>
       </div>
     </header>
