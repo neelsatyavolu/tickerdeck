@@ -15,7 +15,7 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
 
   await page.getByRole("link", { name: "Dashboards" }).click();
   await expect(page.getByRole("heading", { name: "Dashboards", exact: true })).toBeVisible();
-  await page.locator("div", { has: page.getByText("Market overview", { exact: true }) }).getByRole("button", { name: "Use this layout" }).first().click();
+  await page.locator(".grid-cells > div").filter({ hasText: "Market overview" }).getByRole("button", { name: "Use this layout" }).click();
 
   await expect(page.getByRole("heading", { name: "Market overview" })).toBeVisible({ timeout: 30_000 });
   const indexes = page.getByRole("region", { name: "Indexes", exact: true });
@@ -53,9 +53,10 @@ test("dashboards from layouts, with editable panels", async ({ page }) => {
 
   // Deep-dive layout for a specific ticker.
   await page.goto("/d");
-  await page.getByPlaceholder("Pick a ticker").fill("DHT");
+  const deepDive = page.locator(".grid-cells > div").filter({ hasText: "Single-stock deep dive" });
+  await deepDive.getByPlaceholder("Pick a ticker").fill("DHT");
   await page.getByRole("option", { name: /^DHT/ }).first().click();
-  await page.getByRole("button", { name: "Create", exact: true }).first().click();
+  await deepDive.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("heading", { name: "DHT deep dive" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("img", { name: /DHT price/ })).toBeVisible({ timeout: 30_000 });
 
