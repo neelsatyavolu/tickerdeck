@@ -321,3 +321,6 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 .home-row:hover { text-decoration: none; background: var(--surface-hover); }
 .home-row .num { text-align: right; min-width: 72px; }
 @media (max-width: 900px) { .home-markets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* A panel whose content should fill the row's height (e.g. a heatmap beside a taller list) */
+.dash-panel.fill > :last-child { flex: 1; }
+.dash-panel.fill .heatmap { height: 100%; grid-auto-rows: minmax(56px, 1fr); align-content: stretch; }

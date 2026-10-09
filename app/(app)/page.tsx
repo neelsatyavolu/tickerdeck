@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
+import { LineChart } from "@/components/charts/LineChart";
 import { Sparkline } from "@/components/charts/Sparkline";
+import { useHistories } from "@/components/useHistory";
+import { holdingsValueSeries } from "@/lib/portfolio/history";
 import { PanelView } from "@/components/dashboard/PanelViews";
 import { useDashboards } from "@/components/Dashboards";
 import { useLivePrices } from "@/components/LivePrices";
@@ -25,9 +28,9 @@ import { aggregatePositions, portfolioTotals, uniqueSymbols } from "@/lib/portfo
 const MARKETS = ["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX"];
 const MAX_HEAT = 40;
 
-function Section({ title, span, action, children }: { title: string; span: 4 | 6 | 8 | 12; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, span, action, fill, children }: { title: string; span: 4 | 6 | 8 | 12; action?: React.ReactNode; fill?: boolean; children: React.ReactNode }) {
   return (
-    <section className={`dash-panel span-${span}`} aria-label={title}>
+    <section className={`dash-panel span-${span}${fill ? " fill" : ""}`} aria-label={title}>
       <div className="dash-panel-head">
         <span className="label">{title}</span>
         {action}
@@ -47,8 +50,11 @@ export default function Home() {
   const held = useMemo(() => uniqueSymbols(portfolios.filter((p) => p.kind !== "watchlist")), [portfolios]);
   const watched = useMemo(() => primary?.items.map((i) => i.symbol) ?? [], [primary]);
   const everything = useMemo(() => [...new Set([...held, ...watched])], [held, watched]);
+  // Indexes live in the markets strip; the panels below are about securities.
+  const securities = useMemo(() => everything.filter((s) => !s.startsWith("^")), [everything]);
+  const watchedSecurities = useMemo(() => watched.filter((s) => !s.startsWith("^")), [watched]);
   const { prices, checked } = useLivePrices([...MARKETS, ...everything]);
-  const { map: overviews, ready: trendsReady } = useOverviews([...MARKETS, ...watched.slice(0, 8)]);
+  const { map: overviews, ready: trendsReady } = useOverviews([...MARKETS, ...watchedSecurities.slice(0, 8)]);
 
   const money = useMemo(() => {
     const rows = portfolios
@@ -63,6 +69,15 @@ export default function Home() {
     const basis = rows.reduce((s, r) => s + (r.p.kind === "paper" && r.p.starting_cash ? r.p.starting_cash : r.totals.cost), 0);
     return { rows, value, day, gain, basis };
   }, [portfolios, prices]);
+
+  // What today's combined holdings were worth over the last 3 months.
+  const shares = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const p of portfolios) if (p.kind !== "watchlist") for (const h of p.holdings) out[h.symbol] = (out[h.symbol] ?? 0) + h.shares;
+    return out;
+  }, [portfolios]);
+  const { data: valueHist } = useHistories(Object.keys(shares).filter((s) => shares[s] > 0), "3mo");
+  const valueSeries = useMemo(() => holdingsValueSeries(valueHist, shares), [valueHist, shares]);
 
   const status = marketStatus(now);
   const recentDashboards = [...dashboards].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4);
@@ -136,7 +151,12 @@ export default function Home() {
                 <div className={`num ${tone(money.gain)}`} style={{ fontSize: 12 }}>{pct(money.basis > 0 ? money.gain / money.basis : null)}</div>
               </div>
             </div>
-            <div style={{ marginTop: 8 }}>
+            {valueSeries.length > 1 && (
+              <div style={{ marginTop: 8 }}>
+                <LineChart points={valueSeries} label="Your holdings, 3 months" height={170} />
+              </div>
+            )}
+            <div style={{ marginTop: 4 }}>
               {money.rows.slice(0, 5).map(({ p, totals }) => (
                 <Link key={p.id} href={`/p/${p.id}`} className="home-row">
                   <span style={{ fontWeight: 500 }}>{p.name} <span className="faint mono" style={{ fontSize: 11 }}>{p.kind}</span></span>
@@ -148,22 +168,22 @@ export default function Home() {
           </Section>
         )}
 
-        {everything.length >= 2 && (
+        {securities.length >= 2 && (
           <Section title="Movers today" span={money.rows.length > 0 ? 4 : 6}>
-            <PanelView panel={panel("movers", everything.slice(0, MAX_HEAT))} />
+            <PanelView panel={panel("movers", securities.slice(0, MAX_HEAT))} />
           </Section>
         )}
 
-        {everything.length >= 2 && (
-          <Section title="Everything you hold and watch" span={money.rows.length > 0 ? 6 : 6}>
-            <PanelView panel={panel("heatmap", everything.slice(0, MAX_HEAT))} />
+        {securities.length >= 2 && (
+          <Section title="Everything you hold and watch" span={watchedSecurities.length > 0 ? 6 : 12} fill>
+            <PanelView panel={panel("heatmap", securities.slice(0, MAX_HEAT))} />
           </Section>
         )}
 
-        {watched.length > 0 && (
-          <Section title={primary?.name ?? "Watchlist"} span={6} action={<Link className="btn-text" href="/watchlist">Open →</Link>}>
+        {watchedSecurities.length > 0 && (
+          <Section title={primary?.name ?? "Watchlist"} span={securities.length >= 2 ? 6 : 12} action={<Link className="btn-text" href="/watchlist">Open →</Link>}>
             <div>
-              {watched.slice(0, 8).map((s) => {
+              {watchedSecurities.slice(0, 8).map((s) => {
                 const live = prices[s];
                 const change = live && live.prevClose ? live.price / live.prevClose - 1 : null;
                 return (

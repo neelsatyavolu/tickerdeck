@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { pct, points, signedUsd, timeAgo, tone } from "@/lib/format";
+import { session } from "@/lib/marketHours";
 import { useFeedStatus } from "./LivePrices";
 
 export function Tile({ label, value, sub, subTone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; subTone?: string }) {
@@ -27,28 +28,48 @@ export function Change({ amount, percent, money = true }: { amount?: number | nu
   );
 }
 
-const STATUS_TEXT = { connecting: "connecting", live: "live", quiet: "market quiet", offline: "updates every min" } as const;
-
+/**
+ * Feed status, tied to the market clock: "Live" only during the regular session.
+ * Outside it, trades from pre-market or after hours don't count as live.
+ */
 export function FeedBadge() {
   const { status, lastTrade } = useFeedStatus();
-  const [, tick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 15_000);
+    const id = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(id);
   }, []);
-  const title =
-    status === "offline"
-      ? "Live stream disconnected; prices refresh every minute."
-      : status === "quiet"
-        ? "Connected; no trades recently (market may be closed). Showing last price."
-        : lastTrade
-          ? `Last trade ${timeAgo(lastTrade)}`
-          : undefined;
+  const s = session(new Date(now));
+  const trading = status === "live";
+
+  let text: string;
+  let dot = "";
+  let title: string;
+  if (s === "regular") {
+    if (status === "offline") {
+      text = "updates every min";
+      title = "Live stream disconnected; prices refresh every minute.";
+    } else if (trading) {
+      text = "live";
+      dot = "live";
+      title = lastTrade ? `Last trade ${timeAgo(lastTrade)}` : "Streaming trades";
+    } else {
+      text = status === "connecting" ? "connecting" : "market quiet";
+      title = "Connected; no recent trades.";
+    }
+  } else if ((s === "pre" || s === "after") && trading) {
+    text = s === "pre" ? "pre-market" : "after hours";
+    title = `Extended-hours trading${lastTrade ? `; last trade ${timeAgo(lastTrade)}` : ""}. Regular session is 9:30 AM–4:00 PM ET.`;
+  } else {
+    text = "market closed";
+    title = "Showing the last prices. Regular session is 9:30 AM–4:00 PM ET, Monday to Friday.";
+  }
+
   return (
     <span className="status" title={title} aria-live="polite">
-      <span className={`dot ${status === "live" ? "live" : ""}`} />
-      {STATUS_TEXT[status]}
-      {status === "live" && <span className="caret" aria-hidden="true" />}
+      <span className={`dot ${dot}`} />
+      {text}
+      {dot === "live" && <span className="caret" aria-hidden="true" />}
     </span>
   );
 }

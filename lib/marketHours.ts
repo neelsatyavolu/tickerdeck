@@ -13,6 +13,20 @@ function newYorkClock(now: Date): { day: number; minutes: number } {
 }
 
 export type MarketStatus = { open: boolean; label: string };
+export type Session = "regular" | "pre" | "after" | "closed";
+
+const PRE_MIN = 4 * 60;
+const AFTER_END_MIN = 20 * 60;
+
+/** Which trading session it is in New York: pre-market 4:00–9:30, regular 9:30–4:00, after hours 4:00–8:00 PM. */
+export function session(now = new Date()): Session {
+  const { day, minutes } = newYorkClock(now);
+  if (day < 1 || day > 5) return "closed";
+  if (minutes >= OPEN_MIN && minutes < CLOSE_MIN) return "regular";
+  if (minutes >= PRE_MIN && minutes < OPEN_MIN) return "pre";
+  if (minutes >= CLOSE_MIN && minutes < AFTER_END_MIN) return "after";
+  return "closed";
+}
 
 export function marketStatus(now = new Date()): MarketStatus {
   const { day, minutes } = newYorkClock(now);
