@@ -38,6 +38,18 @@ test("news tab shows curated stories and the footer links to GitHub", async ({ p
   const labels = await page.locator(".news-card .label").allTextContents();
   expect(labels.every((l) => l.startsWith(sources[1]))).toBe(true);
 
+  // Picking a list narrows the page to stories about its stocks.
+  const list = page.getByLabel("List");
+  const watchlistId = await list.locator('optgroup[label="Watchlists"] option').first().getAttribute("value");
+  await list.selectOption(watchlistId);
+  await expect(page.getByRole("group", { name: "Section" })).toBeHidden();
+  await expect(page.locator(".news-card").first()).toBeVisible({ timeout: 30_000 });
+  const cards = await page.locator(".news-card").count();
+  await expect(page.locator(".news-card").filter({ has: page.locator(".news-tickers a.mine", { hasText: /^AAPL$/ }) })).toHaveCount(cards);
+  await page.screenshot({ path: "test-results/news-list.png" });
+  await list.selectOption("all");
+  await expect(page.getByRole("group", { name: "Section" })).toBeVisible();
+
   const github = page.getByRole("contentinfo").getByRole("link", { name: /GitHub/ });
   await expect(github).toHaveAttribute("href", "https://github.com/neelsatyavolu/tickerdeck");
   await expect(page.getByRole("contentinfo")).toContainText(/© \d{4} tickerdeck/);
