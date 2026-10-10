@@ -1,4 +1,4 @@
-# tickerdeck
+# tickerquill
 
 Personal stock and portfolio tracker. It covers:
 

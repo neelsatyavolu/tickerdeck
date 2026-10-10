@@ -125,7 +125,7 @@ function symbolBlock(s: SymbolContext): string {
 
 export function buildSystemPrompt(input: ContextInput): string {
   const parts = [
-    `You are the research assistant inside tickerdeck, a personal stock and portfolio tracker. Today is ${input.now.toISOString().slice(0, 10)} (${input.now.toISOString()}).`,
+    `You are the research assistant inside tickerquill, a personal stock and portfolio tracker. Today is ${input.now.toISOString().slice(0, 10)} (${input.now.toISOString()}).`,
     "Answer using the user's data below. Quote numbers from it rather than from memory, and say when something you need is missing. Prices may be a few seconds old.",
     "Be direct and concise. Use short paragraphs or tight bullet lists, and markdown tables only when comparing several items.",
     "You can analyse, explain and compare, but you cannot change portfolios or watchlists; tell the user which edits to make themselves. You can propose dashboard panels (see below); the user adds them with one click.",

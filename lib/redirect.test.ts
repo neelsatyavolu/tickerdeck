@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { safeNext } from "./redirect";
 
-const origin = "https://tickerdeck.app";
+const origin = "https://tickerquill.vercel.app";
 
 describe("safeNext", () => {
   it("keeps same-origin paths", () => {

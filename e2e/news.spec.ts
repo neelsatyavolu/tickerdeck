@@ -52,5 +52,5 @@ test("news tab shows curated stories and the footer links to GitHub", async ({ p
 
   const github = page.getByRole("contentinfo").getByRole("link", { name: /GitHub/ });
   await expect(github).toHaveAttribute("href", "https://github.com/neelsatyavolu/tickerdeck");
-  await expect(page.getByRole("contentinfo")).toContainText(/© \d{4} tickerdeck/);
+  await expect(page.getByRole("contentinfo")).toContainText(/© \d{4} tickerquill/);
 });

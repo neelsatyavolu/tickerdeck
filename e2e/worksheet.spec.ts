@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// The "Following Stocks Online" worksheet, done in tickerdeck: index levels and
+// The "Following Stocks Online" worksheet, done in tickerquill: index levels and
 // 10-year performance, and a look-up table for nine companies.
 
 test.skip(!process.env.E2E_BASE_URL && !process.env.NEON_AUTH_BASE_URL, "Set E2E_BASE_URL or the Neon env");

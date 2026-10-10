@@ -2,7 +2,7 @@ import "server-only";
 import { bundledModels, loadModels, selectModels } from "@neelsatyavolu/shared-ai-auth";
 import type { Provider } from "./providers";
 
-// Add model IDs here only when tickerdeck should hide them. New IDs show by default.
+// Add model IDs here only when tickerquill should hide them. New IDs show by default.
 const HIDDEN_MODELS: Record<Provider, string[]> = { codex: [], grok: [] };
 let cached = bundledModels;
 let refreshAt = 0;

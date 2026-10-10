@@ -10,7 +10,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
-  title: "tickerdeck",
+  title: "tickerquill",
   description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
 };
 

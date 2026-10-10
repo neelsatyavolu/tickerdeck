@@ -25,7 +25,7 @@ function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href="/" className="brand">tickerdeck</Link>
+        <Link href="/" className="brand">tickerquill</Link>
         <nav className="nav" aria-label="Main">
           <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Home</Link>
           <Link href="/portfolios" aria-current={pathname === "/portfolios" || pathname.startsWith("/p/") ? "page" : undefined}>Portfolios</Link>
