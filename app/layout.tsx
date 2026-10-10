@@ -12,6 +12,16 @@ const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"
 export const metadata: Metadata = {
   title: "tickerquill",
   description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
+  // Link previews. The image is app/opengraph-image.png; metadataBase makes its URL absolute.
+  metadataBase: new URL("https://tickerquill.n3el.dev"),
+  openGraph: {
+    title: "tickerquill — track portfolios with forecasts and an AI analyst",
+    description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
+    url: "/",
+    siteName: "tickerquill",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
