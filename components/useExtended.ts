@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/client/api";
+import { isCrypto } from "@/lib/market/crypto";
 import type { ExtendedQuote } from "@/lib/market/nasdaq";
 import { session } from "@/lib/marketHours";
 import type { LivePrice } from "./LivePrices";
@@ -16,7 +17,7 @@ export type ExtendedPrice = { session: "pre" | "after"; price: number; change: n
  * live feed wins.
  */
 export function useExtended(symbols: string[], prices: Record<string, LivePrice>): Record<string, ExtendedPrice> {
-  const key = [...new Set(symbols.filter((s) => !s.startsWith("^")))].sort().slice(0, 20).join(",");
+  const key = [...new Set(symbols.filter((s) => !s.startsWith("^") && !isCrypto(s)))].sort().slice(0, 20).join(",");
   const [fetched, setFetched] = useState<{ key: string; rows: Record<string, ExtendedQuote> } | null>(null);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import { ErrorText, Seg } from "@/components/ui";
 import { useWatchlist } from "@/components/Watchlist";
 import { cachedApi } from "@/lib/client/api";
 import { timeAgo } from "@/lib/format";
+import { isCrypto } from "@/lib/market/crypto";
 import { NEWS_MAX_SYMBOLS, storiesFor } from "@/lib/market/newsScope";
 import type { NewsItem } from "@/lib/market/types";
 import { uniqueSymbols } from "@/lib/portfolio/math";
@@ -25,7 +26,7 @@ const SELECT_STYLE: React.CSSProperties = { width: "auto", padding: "4px 8px", f
 
 /** A portfolio or watchlist the page can be narrowed to (indexes have no company news). */
 type Scope = { id: string; name: string; symbols: string[] };
-const toScope = (id: string, name: string, symbols: string[]): Scope => ({ id, name, symbols: [...new Set(symbols)].filter((s) => !s.startsWith("^")) });
+const toScope = (id: string, name: string, symbols: string[]): Scope => ({ id, name, symbols: [...new Set(symbols)].filter((s) => !s.startsWith("^") && !isCrypto(s)) });
 const hasStocks = (s: Scope) => s.symbols.length > 0;
 
 /** For the overview: the freshest stories that have photos first (stable, so still newest-first within each group). */
@@ -118,7 +119,7 @@ export default function NewsPage() {
   const mineList = useMemo(() => {
     const held = uniqueSymbols(portfolios.filter((p) => p.kind !== "watchlist"));
     const watched = lists.flatMap((l) => l.items.map((i) => i.symbol));
-    return [...new Set([...held, ...watched])].filter((s) => !s.startsWith("^"));
+    return [...new Set([...held, ...watched])].filter((s) => !s.startsWith("^") && !isCrypto(s));
   }, [portfolios, lists]);
   const mine = useMemo(() => new Set(mineList), [mineList]);
   const portfolioScopes = useMemo(() => portfolios.map((p) => toScope(`p:${p.id}`, p.name, p.holdings.map((h) => h.symbol))).filter(hasStocks), [portfolios]);

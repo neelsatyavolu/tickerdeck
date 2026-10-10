@@ -2,12 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
+import { isCrypto } from "@/lib/market/crypto";
 import type { QuoteSnapshot } from "@/lib/market/types";
 import { session } from "@/lib/marketHours";
 
 // Live prices: a REST snapshot for previous close and a starting price, then
 // Finnhub's trade WebSocket on top. Snapshots refresh every minute as a
-// fallback for when the socket is down or the market is closed.
+// fallback for when the socket is down or the market is closed. Crypto isn't
+// on the stream, so its snapshots refresh every 15 seconds instead.
 
 /** `price` is the regular session; trades before 9:30 or after 4:00 ET go to `ext`. */
 export type LivePrice = { price: number; prevClose: number; time: number; fromTrade: boolean; ext?: { price: number; time: number } };
@@ -24,12 +26,14 @@ type Ctx = {
 
 const LiveCtx = createContext<Ctx | null>(null);
 const SNAPSHOT_EVERY = 60_000;
+const CRYPTO_EVERY = 15_000;
 const FLUSH_EVERY = 400;
 const QUIET_AFTER = 90_000;
 const SNAPSHOT_BATCH = 50;
 const SYMBOL_RE = /^([A-Z][A-Z0-9.-]{0,9}|\^[A-Z0-9]{2,6})$/;
-// Indexes (^GSPC) aren't on Finnhub's free trade stream; they refresh by snapshot.
-const streamable = (s: string) => !s.startsWith("^");
+// Indexes (^GSPC) aren't on Finnhub's free trade stream and crypto (BTC-USD)
+// isn't a stock symbol there; both refresh by snapshot.
+const streamable = (s: string) => !s.startsWith("^") && !isCrypto(s);
 
 export function LivePricesProvider({ children }: { children: React.ReactNode }) {
   const [prices, setPrices] = useState<Record<string, LivePrice>>({});
@@ -59,15 +63,17 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
 
   const watchedKey = watched.join(",");
 
-  // REST snapshots: immediately for new symbols, then every minute.
+  // REST snapshots: immediately for new symbols, then every minute (crypto every 15 seconds).
   useEffect(() => {
     if (!watchedKey) return;
     let cancelled = false;
-    const load = async () => {
+    const all = watchedKey.split(",");
+    const coins = all.filter(isCrypto);
+    const load = async (symbols: string[]) => {
       try {
         // Skip malformed symbols and stay under the route's 50-symbol limit,
         // so one bad ticker never blanks every price.
-        const valid = watchedKey.split(",").filter((s) => SYMBOL_RE.test(s));
+        const valid = symbols.filter((s) => SYMBOL_RE.test(s));
         const batches: string[][] = [];
         for (let i = 0; i < valid.length; i += SNAPSHOT_BATCH) batches.push(valid.slice(i, i + SNAPSHOT_BATCH));
         const results = await Promise.all(
@@ -80,7 +86,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         );
         const quotes = results.flatMap((r) => r.quotes);
         if (cancelled) return;
-        setChecked((prev) => ({ ...prev, ...Object.fromEntries(watchedKey.split(",").map((s) => [s, true as const])) }));
+        setChecked((prev) => ({ ...prev, ...Object.fromEntries(symbols.map((s) => [s, true as const])) }));
         setPrices((prev) => {
           const next = { ...prev };
           for (const q of quotes) {
@@ -92,14 +98,16 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         });
       } catch (err) {
         console.warn("[prices] snapshot failed", err);
-        if (!cancelled) setChecked((prev) => ({ ...prev, ...Object.fromEntries(watchedKey.split(",").map((s) => [s, true as const])) }));
+        if (!cancelled) setChecked((prev) => ({ ...prev, ...Object.fromEntries(symbols.map((s) => [s, true as const])) }));
       }
     };
-    load();
-    const id = setInterval(load, SNAPSHOT_EVERY);
+    load(all);
+    const id = setInterval(() => load(all), SNAPSHOT_EVERY);
+    const coinId = coins.length > 0 ? setInterval(() => load(coins), CRYPTO_EVERY) : undefined;
     return () => {
       cancelled = true;
       clearInterval(id);
+      clearInterval(coinId);
     };
   }, [watchedKey]);
 

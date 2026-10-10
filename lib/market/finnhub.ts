@@ -169,9 +169,9 @@ export function companyFeed(symbol: string): Promise<NewsItem[]> {
 }
 
 /** General market headlines (used on index pages, which have no company news). */
-export function marketNews(): Promise<NewsItem[]> {
-  return memo("fh:marketnews", NEWS_TTL, async () => {
-    const rows = await get<RawNews[]>("news", { category: "general" });
+export function marketNews(category: "general" | "crypto" = "general"): Promise<NewsItem[]> {
+  return memo(category === "general" ? "fh:marketnews" : `fh:marketnews:${category}`, NEWS_TTL, async () => {
+    const rows = await get<RawNews[]>("news", { category });
     return (Array.isArray(rows) ? rows : [])
       .filter((n) => n.headline && n.url?.startsWith("https://"))
       .sort((a, b) => b.datetime - a.datetime)

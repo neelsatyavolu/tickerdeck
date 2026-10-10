@@ -47,5 +47,5 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   await expect(page.getByRole("heading", { name: "Watchlist wall" })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".dash-panel")).toHaveCount(6);
   for (const s of ["AAPL", "VTSAX", "^GSPC"]) await expect(page.getByRole("img", { name: new RegExp(`^${s.replace("^", "\\^")} price`) })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Full screen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Display mode" })).toBeVisible();
 });

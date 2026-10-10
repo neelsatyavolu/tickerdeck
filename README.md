@@ -3,7 +3,9 @@
 Personal stock and portfolio tracker. It covers:
 
 - **Portfolios**: holdings, watchlists, and paper (what-if) baskets. Holdings are stored as individual purchase lots.
-- **Live prices**: streamed from Finnhub's WebSocket.
+- **Live prices**: streamed from Finnhub's WebSocket. Crypto (`BTC-USD` and about 25 other coins) can be watched and charted; it refreshes every 15 seconds.
+- **Dashboards and display mode**: any dashboard can fill a spare tablet, phone or monitor and keep the screen awake. The "Display board" layout shows big price tiles, and `?display=1` on a dashboard's address opens it straight into display mode.
+- **Themes**: Ink, Paper, Graphite, Salmon and Night, chosen in Settings and saved per browser.
 - **Forecasts**: Monte Carlo price ranges, analyst price targets, and analyst ratings.
 - **AI assistant**: runs on your own ChatGPT or Grok subscription, using the [`shared-ai-auth`](https://github.com/neelsatyavolu/shared-ai-auth) sign-in.
 
@@ -14,6 +16,7 @@ Personal stock and portfolio tracker. It covers:
 - **Market data:**
   - Finnhub: quotes, the trade stream, profiles, key metrics, ratings, earnings, peers, news, and symbol search.
   - Nasdaq (`lib/market/nasdaq.ts`): daily price history and volume (stocks and ETFs), analyst targets and their history, and sector/dividend summary.
+  - Coinbase Exchange (`lib/market/coinbase.ts`): crypto quotes and daily history. Official, and needs no key.
   - Yahoo Finance (`lib/market/yahoo.ts`): fallback for history and targets only. It rate-limits cloud hosts (429 from Vercel), so Nasdaq is tried first (`lib/market/sources.ts`). Nasdaq's and Yahoo's endpoints are both unofficial.
   - Every stock page links out to the matching Yahoo Finance pages.
 - **Design:** Machine & Ink: warm ink-black, Geist / Geist Mono / Newsreader, one blue accent, flat with sharp corners.

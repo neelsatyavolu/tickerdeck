@@ -1,4 +1,4 @@
-import { newPanelId, panelsSchema, type Panel } from "./schema";
+import { newPanelId, PANEL_META, panelsSchema, type Panel } from "./schema";
 
 // Starting layouts. Each is built from what the user has (portfolios,
 // watchlist) and an optional focus symbol, then validated like any dashboard.
@@ -10,7 +10,7 @@ export type TemplateContext = {
   /** Custom watchlists. */
   watchlists?: { id: string; name: string; symbols: string[] }[];
   symbol?: string;
-  /** For the wall: "all", "watchlist" (primary), "list:<id>", or a portfolio id. */
+  /** For the wall and the board: "all", "watchlist" (primary), "list:<id>", or a portfolio id. */
   source?: string;
 };
 
@@ -20,10 +20,13 @@ type Template = {
   description: string;
   needsSymbol?: boolean;
   needsSource?: boolean;
+  /** What a needsSource layout calls itself: "Watchlist wall", "Watchlist board". */
+  noun?: string;
   build: (ctx: TemplateContext) => Omit<Panel, "id">[];
 };
 
 const WALL_MAX_CHARTS = 39; // plus the heatmap = the 40-panel limit
+const BOARD_MAX_SYMBOLS = 120;
 
 /** Symbols for the wall: one portfolio, the watchlist, or everything (holdings first). */
 export function wallSymbols({ portfolios, watchlist, watchlists = [], source = "all" }: TemplateContext): string[] {
@@ -36,11 +39,20 @@ export function wallSymbols({ portfolios, watchlist, watchlists = [], source = "
   return [...new Set(list)];
 }
 
-function wallName({ portfolios, watchlists = [], source = "all" }: TemplateContext): string {
-  if (source === "watchlist") return "Watchlist wall";
-  if (source.startsWith("list:")) return `${watchlists.find((l) => `list:${l.id}` === source)?.name ?? "List"} wall`;
-  if (source === "all") return "Everything wall";
-  return `${portfolios.find((p) => p.id === source)?.name ?? "Portfolio"} wall`;
+function sourceName({ portfolios, watchlists = [], source = "all" }: TemplateContext, noun: string): string {
+  if (source === "watchlist") return `Watchlist ${noun}`;
+  if (source.startsWith("list:")) return `${watchlists.find((l) => `list:${l.id}` === source)?.name ?? "List"} ${noun}`;
+  if (source === "all") return `Everything ${noun}`;
+  return `${portfolios.find((p) => p.id === source)?.name ?? "Portfolio"} ${noun}`;
+}
+
+/** The source's symbols, or an error that says what to add first. */
+function requireSymbols(ctx: TemplateContext): string[] {
+  const symbols = wallSymbols(ctx);
+  if (symbols.length === 0) {
+    throw new Error(ctx.source === "watchlist" ? "Your watchlist is empty. Watch some symbols first." : "Nothing to show yet. Add holdings or watch some symbols first.");
+  }
+  return symbols;
 }
 
 const MEGA_CAPS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA", "BRK.B", "JPM", "LLY", "V", "XOM", "UNH", "WMT", "COST"];
@@ -54,15 +66,31 @@ export const TEMPLATES: Template[] = [
     name: "Everything wall",
     description: "A screen full of small charts: one per symbol in a portfolio, your watchlist, or all of them, with a heatmap on top.",
     needsSource: true,
+    noun: "wall",
     build: (ctx) => {
-      const symbols = wallSymbols(ctx);
-      if (symbols.length === 0) {
-        throw new Error(ctx.source === "watchlist" ? "Your watchlist is empty. Watch some symbols first." : "Nothing to show yet. Add holdings or watch some symbols first.");
-      }
-      const shown = symbols.slice(0, WALL_MAX_CHARTS);
+      const shown = requireSymbols(ctx).slice(0, WALL_MAX_CHARTS);
       const panels: Omit<Panel, "id">[] = [];
       if (shown.length >= 2) panels.push({ type: "heatmap", title: "Today", symbols: shown, width: 12 });
       for (const s of shown) panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: 3 });
+      return panels;
+    },
+  },
+  {
+    id: "board",
+    name: "Display board",
+    description: "Big live prices for a spare tablet, phone or monitor: indexes first, then a tile per symbol. Open it and press Display mode.",
+    needsSource: true,
+    noun: "board",
+    build: (ctx) => {
+      const shown = requireSymbols(ctx).slice(0, BOARD_MAX_SYMBOLS);
+      const panels: Omit<Panel, "id">[] = [{ type: "tiles", title: "Indexes", symbols: INDEXES, width: 12 }];
+      for (let i = 0; i < shown.length; i += PANEL_META.tiles.maxSymbols) {
+        panels.push({ type: "tiles", title: i === 0 ? "Prices" : "More prices", symbols: shown.slice(i, i + PANEL_META.tiles.maxSymbols), width: 12 });
+      }
+      if (shown.length >= 2) {
+        const top = shown.slice(0, Math.min(PANEL_META.heatmap.maxSymbols, PANEL_META.movers.maxSymbols));
+        panels.push({ type: "heatmap", title: "Today", symbols: top, width: 8 }, { type: "movers", title: "Movers", symbols: top, width: 4 });
+      }
       return panels;
     },
   },
@@ -145,6 +173,6 @@ export function buildTemplate(id: string, ctx: TemplateContext): { name: string;
   const t = TEMPLATES.find((x) => x.id === id);
   if (!t) throw new Error("Unknown layout");
   const panels = panelsSchema.parse(t.build(ctx).map((p) => ({ ...p, id: newPanelId() })));
-  const name = t.needsSymbol && ctx.symbol ? `${ctx.symbol} deep dive` : t.needsSource ? wallName(ctx) : t.name;
+  const name = t.needsSymbol && ctx.symbol ? `${ctx.symbol} deep dive` : t.needsSource ? sourceName(ctx, t.noun ?? "wall") : t.name;
   return { name, panels };
 }

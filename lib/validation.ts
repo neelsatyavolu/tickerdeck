@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PORTFOLIO_KINDS } from "./portfolio/types";
 import { HORIZONS } from "./forecast/montecarlo";
+import { isCrypto } from "./market/crypto";
 import { isIndex } from "./market/indexes";
 import { EFFORTS } from "./ai/options";
 
@@ -11,7 +12,7 @@ export const tickerSchema = z
   .toUpperCase()
   .regex(/^[A-Z][A-Z0-9.-]{0,9}$/, "Use a US ticker like AAPL or BRK.B");
 
-/** Anything you can look at or watch: a ticker, or a market index like ^GSPC. */
+/** Anything you can look at or watch: a ticker, a market index like ^GSPC, or a coin like BTC-USD. */
 export const symbolSchema = z
   .string()
   .trim()
@@ -44,6 +45,7 @@ export const holdingInputSchema = z.object({
     .trim()
     .toUpperCase()
     .refine((s) => !isIndex(s), "You can't hold an index; add it to your watchlist instead")
+    .refine((s) => !isCrypto(s), "Crypto can be watched but not held yet; add it to your watchlist instead")
     .pipe(tickerSchema),
   shares: z.coerce.number().min(0, "Shares can't be negative").max(1e12),
   cost_basis: z.coerce.number().min(0, "Cost can't be negative").max(1e9),

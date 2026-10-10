@@ -1,5 +1,5 @@
-/* Machine & Ink — see ~/DESIGN.md */
-:root {
+/* Machine & Ink — see ~/DESIGN.md. Named themes are in themes.css. */
+:root, [data-theme="ink"], [data-theme="graphite"], [data-theme="night"] {
   --bg: #0e0e0d;
   --surface: rgba(242, 240, 234, 0.035);
   --surface-hover: rgba(242, 240, 234, 0.06);
@@ -27,7 +27,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
+  :root:not([data-theme]) {
     --bg: #f7f5ef;
     --surface: rgba(22, 22, 26, 0.025);
     --surface-hover: rgba(22, 22, 26, 0.04);
@@ -274,7 +274,16 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1000px) { .cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .cols-3 { grid-template-columns: minmax(0, 1fr); } }
-.dash-wall:fullscreen { background: var(--bg); overflow: auto; padding: 12px 16px 24px; }
+.dash-wall { margin-top: 24px; }
+/* Display mode: the dashboard covers the window (and the screen, where full screen is allowed). */
+.dash-wall[data-display="true"] { position: fixed; inset: 0; z-index: 60; margin: 0; }
+.dash-wall[data-display="true"], .dash-wall:fullscreen { background: var(--bg); overflow: auto; padding: 12px 16px 24px; }
+/* Tiles grow with the screen; each column is wide enough for a price like $82,953.11 at that size. */
+.dash-wall[data-display="true"] { --tile-value: clamp(22px, 3.6vw, 64px); }
+.dash-wall[data-display="true"] .tiles-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--tile-value) * 6.2)), 1fr)); gap: 20px 0; }
+.dash-wall[data-display="true"] .tiles-grid .tile .label { font-size: clamp(13px, 1.3vw, 21px); }
+.dash-wall[data-display="true"] .tiles-grid .tile .value { font-size: var(--tile-value); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-wall[data-display="true"] .tiles-grid .tile .sub { font-size: clamp(14px, 1.5vw, 28px); }
 .dash-wall-head { display: flex; align-items: center; gap: 12px; padding: 0 0 12px; }
 
 /* Dashboard page: quiet chrome */

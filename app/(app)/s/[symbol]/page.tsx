@@ -76,9 +76,12 @@ export default function StockPage() {
   const targetHistory = useMemo(() => (info?.targets.value?.history ?? []).map((p) => ({ t: p.t, v: p.target })), [info]);
   const stats = info?.stats.value;
   const name = stats?.name ?? info?.profile.value?.name ?? null;
-  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : stats?.assetClass === "index" ? "Market index" : null].filter(Boolean).join(" · ");
+  const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : stats?.assetClass === "index" ? "Market index" : stats?.assetClass === "crypto" ? "Cryptocurrency" : null].filter(Boolean).join(" · ");
   const rec = info?.recommendations.value?.[0];
   const isIndexPage = stats?.assetClass === "index";
+  const isCryptoPage = stats?.assetClass === "crypto";
+  /** Indexes and crypto: a price and news, but no company, analysts or holdings. */
+  const priceOnly = isIndexPage || isCryptoPage;
   const steps = [
     { label: "Company details", done: info !== null },
     { label: "Price history", done: all.length > 0 || failed.length > 0 },
@@ -126,7 +129,7 @@ export default function StockPage() {
         <WatchButton symbol={symbol} name={name} />
         <AddToDashboard label="Add chart" make={() => [{ type: "price", title: symbol, symbols: [symbol], range: "1Y", width: 6 }]} />
         <a className="btn btn-ghost" href={yahooUrl(symbol)} target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>
-        {!isIndexPage && <AddToPortfolio symbol={symbol} />}
+        {!priceOnly && <AddToPortfolio symbol={symbol} />}
       </div>
 
       <div style={{ marginTop: 24 }}>
@@ -147,12 +150,12 @@ export default function StockPage() {
         )}
       </section>
 
-      {!isIndexPage && <section className="section">
+      {!priceOnly && <section className="section">
         <div className="spread"><h2 className="display">Key statistics</h2></div>
         {!info ? <div className="notice">Loading</div> : stats ? <KeyStatsGrid stats={stats} price={price} /> : <div className="notice">{info.stats.error ?? "No statistics for this symbol."}</div>}
       </section>}
 
-      <section className="section">
+      {!isCryptoPage && <section className="section">
         <div className="spread"><h2 className="display">Forecast</h2></div>
         <ForecastPanel
           exposures={price ? [{ symbol, value: price }] : []}
@@ -160,11 +163,11 @@ export default function StockPage() {
           history={yearPoints}
           onSettled={onForecastSettled}
           money={!isIndexPage}
-          onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range${isIndexPage ? "" : ", analyst targets"} and recent headlines, and name what would move it toward each case.`, { symbol })}
+          onAskOutlook={() => ask(`Give me a bull, base and bear outlook for $${symbol} over the next 3 months. Use the forecast range${priceOnly ? "" : ", analyst targets"} and recent headlines, and name what would move it toward each case.`, { symbol })}
         />
-      </section>
+      </section>}
 
-      {!isIndexPage && <>
+      {!priceOnly && <>
       <section className="section">
         <div className="spread"><h2 className="display">Analysts</h2></div>
         <div className="grid-cells cols-2">
@@ -186,7 +189,7 @@ export default function StockPage() {
       </>}
 
       <section className="section">
-        <div className="spread"><h2 className="display">{isIndexPage ? "Market news" : "News"}</h2></div>
+        <div className="spread"><h2 className="display">{isIndexPage ? "Market news" : isCryptoPage ? "Crypto news" : "News"}</h2></div>
         {!info ? (
           <div className="notice">Loading</div>
         ) : info.news.value?.length ? (
@@ -203,7 +206,7 @@ export default function StockPage() {
         )}
       </section>
 
-      {!isIndexPage && (
+      {!priceOnly && (
         <section className="section">
           <div className="spread"><h2 className="display">Peers</h2></div>
           {!info ? <div className="notice">Loading</div> : <Peers symbols={info.peers.value ?? []} />}

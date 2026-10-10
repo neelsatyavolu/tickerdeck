@@ -1,4 +1,5 @@
 import { fail, ok, withUser } from "@/lib/api";
+import { cryptoInfo } from "@/lib/market/crypto";
 import { earnings, marketNews, metrics, news, peers, profile, recommendations } from "@/lib/market/finnhub";
 import { indexInfo } from "@/lib/market/indexes";
 import { summary } from "@/lib/market/nasdaq";
@@ -25,15 +26,22 @@ export function GET(_req: Request, { params }: { params: Promise<{ symbol: strin
     const parsed = symbolSchema.safeParse((await params).symbol);
     if (!parsed.success) return fail(firstIssue(parsed.error), 400);
     const symbol = parsed.data;
+    // Indexes and crypto have a price and news, but no company behind them.
     const index = indexInfo(symbol);
-    if (index) {
-      const [q, headlines] = await Promise.all([settle(quote(symbol)), settle(marketNews())]);
+    const coin = cryptoInfo(symbol);
+    const priceOnly = index
+      ? { name: index.name, assetClass: "index" as const, exchange: null, category: "general" as const }
+      : coin
+        ? { name: coin.name, assetClass: "crypto" as const, exchange: "Coinbase", category: "crypto" as const }
+        : null;
+    if (priceOnly) {
+      const [q, headlines] = await Promise.all([settle(quote(symbol)), settle(marketNews(priceOnly.category))]);
       const none = { value: null, error: null };
       return ok({
         symbol,
         quote: q,
         profile: none,
-        stats: { value: { ...buildKeyStats({}, null), name: index.name, assetClass: "index" as const }, error: null },
+        stats: { value: { ...buildKeyStats({}, null), name: priceOnly.name, exchange: priceOnly.exchange, assetClass: priceOnly.assetClass }, error: null },
         targets: none,
         recommendations: none,
         news: headlines,

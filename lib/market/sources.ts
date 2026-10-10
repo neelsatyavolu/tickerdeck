@@ -1,5 +1,7 @@
 import "server-only";
 import * as cnbc from "./cnbc";
+import * as coinbase from "./coinbase";
+import { isCrypto, searchCrypto } from "./crypto";
 import * as finnhub from "./finnhub";
 import { isIndex, searchIndexes } from "./indexes";
 import * as nasdaq from "./nasdaq";
@@ -8,7 +10,8 @@ import { weeklyBefore } from "./downsample";
 import { UpstreamError } from "./http";
 import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
-// Which provider answers what (market indexes like ^GSPC always go to CNBC):
+// Which provider answers what (market indexes like ^GSPC always go to CNBC,
+// crypto like BTC-USD always to Coinbase):
 // - quotes and search: Finnhub first; Nasdaq for what Finnhub's free plan
 //   can't price or find (mutual funds).
 // - history and analyst targets: Nasdaq first (it works from Vercel), Yahoo as
@@ -18,17 +21,21 @@ const FALLBACK_CONCURRENCY = 4;
 
 export async function quote(symbol: string): Promise<QuoteSnapshot | null> {
   if (isIndex(symbol)) return (await cnbc.quotes([symbol]).catch(() => []))[0] ?? null;
+  if (isCrypto(symbol)) return (await coinbase.quotes([symbol]))[0] ?? null;
   return (await finnhub.quote(symbol).catch(() => null)) ?? (await nasdaq.quote(symbol).catch(() => null));
 }
 
 export async function quotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot[]; failed: string[] }> {
   const indexes = symbols.filter(isIndex);
-  const [indexQuotes, rest] = await Promise.all([
+  const coins = symbols.filter(isCrypto);
+  const [indexQuotes, coinQuotes, rest] = await Promise.all([
     indexes.length ? cnbc.quotes(indexes).catch(() => []) : Promise.resolve([]),
-    tickerQuotes(symbols.filter((s) => !isIndex(s))),
+    coinbase.quotes(coins),
+    tickerQuotes(symbols.filter((s) => !isIndex(s) && !isCrypto(s))),
   ]);
-  const gotIndex = new Set(indexQuotes.map((q) => q.symbol));
-  return { quotes: [...indexQuotes, ...rest.quotes], failed: [...indexes.filter((s) => !gotIndex.has(s)), ...rest.failed] };
+  const direct = [...indexQuotes, ...coinQuotes];
+  const got = new Set(direct.map((q) => q.symbol));
+  return { quotes: [...direct, ...rest.quotes], failed: [...[...indexes, ...coins].filter((s) => !got.has(s)), ...rest.failed] };
 }
 
 async function tickerQuotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot[]; failed: string[] }> {
@@ -50,9 +57,12 @@ async function tickerQuotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot[
 
 export async function search(query: string): Promise<SymbolMatch[]> {
   const [a, b] = await Promise.all([finnhub.search(query).catch(() => []), nasdaq.search(query).catch(() => [])]);
-  const indexes = searchIndexes(query).map((i) => ({ symbol: i.symbol, name: i.name, type: "Index" }));
-  // Indexes first: "dow" or "s&p" almost always means the index.
-  return [...indexes, ...mergeSearch(query, a, b).filter((m) => !indexes.some((i) => i.symbol === m.symbol))].slice(0, 8);
+  // Indexes and coins first: "dow", "s&p" or "bitcoin" almost always means the index or the coin.
+  const direct = [
+    ...searchIndexes(query).map((i) => ({ symbol: i.symbol, name: i.name, type: "Index" })),
+    ...searchCrypto(query).map((c) => ({ symbol: c.symbol, name: c.name, type: "Crypto" })),
+  ];
+  return [...direct, ...mergeSearch(query, a, b).filter((m) => !direct.some((d) => d.symbol === m.symbol))].slice(0, 8);
 }
 
 /**
@@ -77,6 +87,7 @@ const DAILY_DAYS = 731; // older than ~2 years is kept weekly
 async function fullHistory(symbol: string): Promise<PricePoint[]> {
   let full: PricePoint[];
   if (isIndex(symbol)) full = await cnbc.history(symbol);
+  else if (isCrypto(symbol)) full = await coinbase.history(symbol);
   else {
     try {
       full = await nasdaq.history(symbol, "10y");

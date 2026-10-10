@@ -11,6 +11,13 @@ describe("symbolSchema", () => {
 });
 
 describe("holdingInputSchema", () => {
+  it("lets crypto be watched but not held", () => {
+    expect(symbolSchema.parse("btc-usd")).toBe("BTC-USD");
+    const r = holdingInputSchema.safeParse({ symbol: "BTC-USD", shares: 1, cost_basis: 1 });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].message).toMatch(/watched but not held/);
+  });
+
   it("rejects indexes with a helpful message", () => {
     const r = holdingInputSchema.safeParse({ symbol: "^GSPC", shares: 1, cost_basis: 1 });
     expect(r.success).toBe(false);

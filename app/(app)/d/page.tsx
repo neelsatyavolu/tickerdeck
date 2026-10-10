@@ -83,7 +83,7 @@ export default function DashboardsPage() {
               <p className="serif muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>{t.description}</p>
               {t.needsSource ? (
                 <div className="row">
-                  <select className="input" value={wallSource} onChange={(e) => setWallSource(e.target.value)} aria-label="Symbols for the wall">
+                  <select className="input" value={wallSource} onChange={(e) => setWallSource(e.target.value)} aria-label={`Symbols for the ${t.noun ?? "wall"}`}>
                     <option value="all">All holdings + watchlists</option>
                     {lists.map((l) => <option key={l.id} value={l.is_primary ? "watchlist" : `list:${l.id}`}>{l.is_primary ? "Watchlist" : `List: ${l.name}`}</option>)}
                     {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

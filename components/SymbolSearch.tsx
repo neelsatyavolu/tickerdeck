@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { api } from "@/lib/client/api";
 import { prefetchStock } from "@/lib/client/prefetch";
 import { cachedListings, loadListings } from "@/lib/client/symbolIndex";
+import { searchCrypto } from "@/lib/market/crypto";
 import { searchIndexes } from "@/lib/market/indexes";
 import { searchListings, type Listing } from "@/lib/market/symbolSearch";
 import type { SymbolMatch } from "@/lib/market/types";
@@ -50,9 +51,12 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
 
   const local = useMemo(() => {
     if (!term) return [];
-    const indexes = searchIndexes(term).map((i) => ({ symbol: i.symbol, name: i.name, type: "Index" }));
+    const direct = [
+      ...searchIndexes(term).map((i) => ({ symbol: i.symbol, name: i.name, type: "Index" })),
+      ...searchCrypto(term).map((c) => ({ symbol: c.symbol, name: c.name, type: "Crypto" })),
+    ];
     const fromIndex = listings ? searchListings(listings, term, LIMIT) : [];
-    return [...indexes, ...fromIndex.filter((r) => !indexes.some((i) => i.symbol === r.symbol))].slice(0, LIMIT);
+    return [...direct, ...fromIndex.filter((r) => !direct.some((d) => d.symbol === r.symbol))].slice(0, LIMIT);
   }, [term, listings]);
 
   // Remote search only fills gaps (funds, or before the index has loaded).

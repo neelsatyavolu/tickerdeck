@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { PanelEditor } from "@/components/dashboard/PanelEditor";
 import { PanelView } from "@/components/dashboard/PanelViews";
@@ -10,9 +10,18 @@ import { useDashboards } from "@/components/Dashboards";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { ErrorText } from "@/components/ui";
+import { useWakeLock, type WakeState } from "@/components/useWakeLock";
 import { PANEL_META, PANEL_WIDTHS, type Panel } from "@/lib/dashboard/schema";
 import { isTidy, tidyLayout } from "@/lib/dashboard/tidy";
 import { moveItem } from "@/lib/reorder";
+
+const WAKE_NOTE: Record<WakeState, string> = {
+  off: "",
+  pending: "",
+  held: "Screen stays awake",
+  unsupported: "This browser can't keep the screen awake. Turn off auto-lock on the device.",
+  refused: "The device won't keep the screen awake right now. Check battery saver or auto-lock.",
+};
 
 export default function DashboardPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,13 +37,32 @@ export default function DashboardPage() {
   const [dropOn, setDropOn] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wall = useRef<HTMLDivElement>(null);
-  const [fullscreen, setFullscreen] = useState(false);
+  // Display mode lives in the URL, so a bookmark or home-screen icon on a
+  // spare tablet opens straight into it.
+  // It waits for panels and steps aside while editing, so it never covers the editor.
+  const display = useSearchParams().get("display") === "1" && !editing && (dashboard?.panels.length ?? 0) > 0;
+  const wake = useWakeLock(display);
+
+  const setDisplay = useCallback((on: boolean) => {
+    window.history.replaceState(null, "", on ? `${window.location.pathname}?display=1` : window.location.pathname);
+  }, []);
+  const exitDisplay = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => { /* already leaving full screen */ });
+    setDisplay(false);
+  }, [setDisplay]);
 
   useEffect(() => {
-    const onChange = () => setFullscreen(document.fullscreenElement === wall.current && wall.current !== null);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
+    if (!display) return;
+    // The browser handles Esc itself in full screen; leaving it ends display mode too.
+    const onFullscreen = () => { if (!document.fullscreenElement) setDisplay(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exitDisplay(); };
+    document.addEventListener("fullscreenchange", onFullscreen);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreen);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [display, setDisplay, exitDisplay]);
 
   // Opening a dashboard makes it the target for one-click "Add to dashboard".
   const exists = Boolean(dashboard);
@@ -42,8 +70,11 @@ export default function DashboardPage() {
     if (exists) markUsed(id);
   }, [exists, id, markUsed]);
 
-  const enterFullscreen = () => {
-    wall.current?.requestFullscreen?.().catch(() => setError("Your browser blocked full screen."));
+  const enterDisplay = () => {
+    setDisplay(true);
+    // Full screen is a bonus: where a browser lacks or blocks it (iPhone), the
+    // display still covers the whole window.
+    wall.current?.requestFullscreen?.().catch(() => {});
   };
 
   const symbols = useMemo(() => [...new Set(dashboard?.panels.flatMap((p) => p.symbols) ?? [])], [dashboard]);
@@ -117,7 +148,7 @@ export default function DashboardPage() {
         </div>
         {!editing && (
           <div className="row" style={{ gap: 4 }}>
-            {panels.length > 0 && <button className="btn-text" onClick={enterFullscreen}>Full screen</button>}
+            {panels.length > 0 && <button className="btn-text" onClick={enterDisplay} title="Fill the screen with this dashboard and keep the screen awake">Display mode</button>}
             <button className="btn-text" onClick={() => setEditing(true)}>Edit</button>
             <button className="btn btn-primary" onClick={() => { setAdding(true); setEditing(true); }}>+ Add panel</button>
           </div>
@@ -152,13 +183,13 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : (
-        <div ref={wall} className="dash-wall" style={{ marginTop: 24 }}>
-        {fullscreen && (
+        <div ref={wall} className="dash-wall" data-display={display}>
+        {display && (
           <div className="dash-wall-head">
             <span className="label" style={{ color: "var(--fg)" }}>{dashboard?.name}</span>
-            <span className="faint mono" style={{ fontSize: 12 }}>Esc to exit</span>
+            <span className="faint mono" style={{ fontSize: 12 }}>{WAKE_NOTE[wake]}</span>
             <span style={{ flex: 1 }} />
-            <button className="btn-text" onClick={() => document.exitFullscreen()}>Exit full screen</button>
+            <button className="btn-text" onClick={exitDisplay}>Exit display mode</button>
           </div>
         )}
         <div className="dash-grid">

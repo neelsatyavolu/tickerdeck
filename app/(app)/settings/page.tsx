@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { AssistantDefaults } from "@/components/AssistantDefaults";
+import { ThemePicker } from "@/components/Theme";
 import { ErrorText } from "@/components/ui";
 import { authClient } from "@/lib/auth/client";
 
@@ -155,6 +156,14 @@ export default function SettingsPage() {
       <section className="section">
         <div className="spread"><h2 className="display">Assistant defaults</h2></div>
         <AssistantDefaults connected={status} />
+      </section>
+
+      <section className="section">
+        <div className="spread"><h2 className="display">Appearance</h2></div>
+        <p className="serif muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
+          The theme is saved in this browser, so a wall display can look different from your laptop.
+        </p>
+        <ThemePicker />
       </section>
 
       <section className="section">

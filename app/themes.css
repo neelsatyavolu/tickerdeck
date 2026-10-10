@@ -1,0 +1,68 @@
+/* Named display themes. Ink and the system default live in globals.css, which
+   also gives Graphite and Night the full dark token set they adjust here.
+   Each theme works on a subtree too, which is how the picker draws swatches. */
+
+/* Paper, forced (the same tokens globals.css applies for a light device). */
+[data-theme="paper"], [data-theme="salmon"] {
+  --bg: #f7f5ef;
+  --surface: rgba(22, 22, 26, 0.025);
+  --surface-hover: rgba(22, 22, 26, 0.04);
+  --fg: #16161a;
+  --fg-2: rgba(22, 22, 26, 0.66);
+  --fg-3: rgba(22, 22, 26, 0.45);
+  --fg-4: rgba(22, 22, 26, 0.28);
+  --border: rgba(22, 22, 26, 0.12);
+  --border-strong: rgba(22, 22, 26, 0.24);
+  --accent: #2f6fe0;
+  --accent-muted: rgba(47, 111, 224, 0.4);
+  --accent-wash: rgba(47, 111, 224, 0.1);
+  --accent-wash-2: rgba(47, 111, 224, 0.2);
+  --danger: #c8352a;
+  --ok: #23895a;
+  --panel: #fbfaf6;
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+  color-scheme: light;
+}
+
+/* Salmon: Paper on financial-newsprint pink. */
+[data-theme="salmon"] {
+  --bg: #fff1e5;
+  --panel: #fff7ef;
+  --border: rgba(51, 34, 20, 0.14);
+  --border-strong: rgba(51, 34, 20, 0.28);
+}
+
+/* Graphite: Ink lifted to a soft grey, for panels that crush near-black. */
+[data-theme="graphite"] {
+  --bg: #1d1d1b;
+  --panel: #242422;
+  --border: rgba(242, 240, 234, 0.12);
+}
+
+/* Night: Ink with the brightness taken down for a dark room. */
+[data-theme="night"] {
+  --bg: #0a0a09;
+  --panel: #0f0f0e;
+  --fg: #b9b6ae;
+  --fg-2: rgba(185, 182, 174, 0.7);
+  --fg-3: rgba(185, 182, 174, 0.48);
+  --fg-4: rgba(185, 182, 174, 0.3);
+  --border: rgba(185, 182, 174, 0.1);
+  --border-strong: rgba(185, 182, 174, 0.22);
+  --accent: #3f74d1;
+  --accent-muted: rgba(63, 116, 209, 0.45);
+  --danger: #b63d32;
+  --ok: #3f996b;
+}
+
+/* Settings: theme picker */
+.theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+@media (max-width: 760px) { .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.theme-option { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; background: none; border: none; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); text-align: left; cursor: pointer; min-width: 0; }
+.theme-option:hover { background: var(--surface); }
+.theme-option[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-wash); }
+.theme-swatch { display: flex; width: 100%; height: 44px; margin-bottom: 8px; border: 1px solid var(--border-strong); }
+.theme-swatch > span { flex: 1; display: flex; align-items: flex-end; padding: 8px; background: var(--bg); }
+.theme-swatch i { position: relative; display: block; width: 28px; height: 3px; background: var(--fg); }
+.theme-swatch i::after { content: ""; position: absolute; left: 34px; top: 0; width: 8px; height: 3px; background: var(--accent); }

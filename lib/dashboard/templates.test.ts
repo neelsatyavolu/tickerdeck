@@ -4,8 +4,8 @@ import { buildTemplate, TEMPLATES } from "./templates";
 const ctx = { portfolios: [{ id: "11111111-1111-4111-8111-111111111111", name: "Core", symbols: ["AAPL", "VTSAX"] }], watchlist: ["NVDA"], symbol: "DHT" };
 
 describe("templates", () => {
-  it("offers six layouts that all validate", () => {
-    expect(TEMPLATES).toHaveLength(6);
+  it("offers seven layouts that all validate", () => {
+    expect(TEMPLATES).toHaveLength(7);
     for (const t of TEMPLATES) {
       const d = buildTemplate(t.id, ctx);
       expect(d.panels.length).toBeGreaterThan(3);
@@ -58,5 +58,31 @@ describe("wall layout", () => {
     expect(buildTemplate("wall", { ...many, source: "watchlist" }).panels.slice(1).map((p) => p.symbols[0])).toEqual(["NVDA", "^GSPC", "AAPL"]);
     const huge = { portfolios: [], watchlist: Array.from({ length: 60 }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`), source: "watchlist" };
     expect(buildTemplate("wall", huge).panels).toHaveLength(40);
+  });
+});
+
+describe("display board layout", () => {
+  const many = { portfolios: [{ id: "11111111-1111-4111-8111-111111111111", name: "Core", symbols: ["AAPL", "MSFT"] }], watchlist: ["NVDA", "^GSPC", "AAPL"] };
+
+  it("leads with index tiles, then big quote tiles for the chosen symbols", () => {
+    const d = buildTemplate("board", { ...many, source: "watchlist" });
+    expect(d.name).toBe("Watchlist board");
+    expect(d.panels.map((p) => p.type)).toEqual(["tiles", "tiles", "heatmap", "movers"]);
+    expect(d.panels[0].symbols).toContain("^GSPC");
+    expect(d.panels[1].symbols).toEqual(["NVDA", "^GSPC", "AAPL"]);
+    expect(d.panels.slice(0, 2).every((p) => p.width === 12)).toBe(true);
+  });
+
+  it("splits a long list into tile panels of twelve and keeps every symbol", () => {
+    const symbols = Array.from({ length: 30 }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
+    const d = buildTemplate("board", { portfolios: [], watchlist: symbols, source: "watchlist" });
+    const tiles = d.panels.filter((p) => p.type === "tiles").slice(1);
+    expect(tiles.map((p) => p.symbols.length)).toEqual([12, 12, 6]);
+    expect(tiles.flatMap((p) => p.symbols)).toEqual(symbols);
+  });
+
+  it("skips the heatmap and movers for a single symbol, and explains an empty source", () => {
+    expect(buildTemplate("board", { portfolios: [], watchlist: ["AAPL"], source: "watchlist" }).panels.map((p) => p.type)).toEqual(["tiles", "tiles"]);
+    expect(() => buildTemplate("board", { portfolios: [], watchlist: [], source: "watchlist" })).toThrow(/watchlist is empty/);
   });
 });

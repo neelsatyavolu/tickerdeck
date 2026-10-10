@@ -1,5 +1,6 @@
 import "server-only";
 import { metrics } from "./finnhub";
+import { cryptoInfo } from "./crypto";
 import { indexInfo } from "./indexes";
 import { summary } from "./nasdaq";
 import { history, quotes } from "./sources";
@@ -33,14 +34,15 @@ export async function fundamentals(symbols: string[]): Promise<Fundamentals[]> {
       const symbol = symbols[next++];
       const q = price.get(symbol);
       const index = indexInfo(symbol);
-      const [m, s, hist] = index
+      const coin = cryptoInfo(symbol);
+      const [m, s, hist] = index || coin
         ? [null, null, null]
         : await Promise.all([metrics(symbol).catch(() => null), summary(symbol).catch(() => null), history(symbol, "3mo").catch(() => null)]);
       const st = withHistoryVolume(buildKeyStats(m ?? {}, s), hist);
       rows.set(symbol, {
         symbol,
-        name: index?.name ?? st.name,
-        exchange: index ? "Index" : st.exchange,
+        name: index?.name ?? coin?.name ?? st.name,
+        exchange: index ? "Index" : coin ? "Coinbase" : st.exchange,
         price: q?.price ?? null,
         prevClose: q?.prevClose ?? null,
         low52: st.low52,
