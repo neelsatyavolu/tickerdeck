@@ -68,6 +68,7 @@ function WatchlistView() {
   const items = useMemo(() => active?.items ?? [], [active]);
   const listId = active?.id;
   const [creating, setCreating] = useState<string | null>(null);
+  const [savingList, setSavingList] = useState(false);
   const [view, setView] = useState<(typeof VIEWS)[number]>("Performance");
   const [renaming, setRenaming] = useState<string | null>(null);
   const symbols = useMemo(() => items.map((i) => i.symbol), [items]);
@@ -144,14 +145,17 @@ function WatchlistView() {
 
   const onCreateList = async () => {
     const name = creating?.trim();
-    if (!name) return;
+    if (!name || savingList) return; // a second submit while the first is saving would create a twin
     setActionError(null);
+    setSavingList(true);
     try {
       const id = await createList(name);
       setCreating(null);
       router.push(`/watchlist?list=${id}`);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't create the list.");
+    } finally {
+      setSavingList(false);
     }
   };
 
@@ -230,7 +234,7 @@ function WatchlistView() {
         ) : (
           <form className="row" style={{ gap: 6, padding: "4px 8px" }} onSubmit={(e) => { e.preventDefault(); onCreateList(); }}>
             <input className="input" style={{ padding: "4px 8px", fontSize: 13 }} placeholder="List name" value={creating} maxLength={60} autoFocus onChange={(e) => setCreating(e.target.value)} aria-label="New list name" />
-            <button className="btn-text" disabled={!creating.trim()}>Create</button>
+            <button className="btn-text" disabled={!creating.trim() || savingList}>Create</button>
             <button type="button" className="btn-text" onClick={() => setCreating(null)}>Cancel</button>
           </form>
         )}

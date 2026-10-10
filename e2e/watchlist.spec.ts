@@ -65,8 +65,11 @@ test("watch symbols without holding them", async ({ page }) => {
   // Custom lists: create one, add to it from its tab and from a stock page's Watch menu.
   await page.getByRole("button", { name: "+ New list" }).click();
   await page.getByLabel("New list name").fill("Chips");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  // Submitting twice before the save lands must still create one list.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Chips" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Chips/ })).toHaveCount(1);
   await page.getByPlaceholder("Add to Chips").fill("AMD");
   await page.getByRole("option", { name: /^AMD\b/ }).first().click();
   await expect(page.getByRole("row", { name: /^AMD/ })).toBeVisible();
