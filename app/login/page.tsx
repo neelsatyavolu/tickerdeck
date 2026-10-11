@@ -1,9 +1,11 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { authClient } from "@/lib/auth/client";
+import { FORGOT_PATH, passwordChangedNotice } from "@/lib/auth/passwordReset";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -23,7 +25,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => passwordChangedNotice(params));
 
   const submit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,6 +87,7 @@ function LoginForm() {
           <button type="button" className="btn-text" onClick={() => { setMode(mode === "sign-in" ? "sign-up" : "sign-in"); setError(null); }}>
             {mode === "sign-in" ? "Create an account instead" : "I already have an account"}
           </button>
+          {mode === "sign-in" && <Link href={FORGOT_PATH} className="btn-text">Forgot password?</Link>}
         </div>
         {error && <div className="error" role="alert">{error}</div>}
         {notice && <div className="card" role="status">{notice}</div>}

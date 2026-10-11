@@ -1,11 +1,6 @@
 import "server-only";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set`);
-  return value;
-}
+import { required } from "../env";
 
 let instance: ReturnType<typeof createNeonAuth> | null = null;
 

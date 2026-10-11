@@ -28,6 +28,16 @@ Personal stock and portfolio tracker. It covers:
 3. Run `pnpm build`. It applies `db/migrations/*.sql` before `next build`, so every deploy migrates automatically. Locally, `pnpm migrate` does the same.
 4. For local dev, connect the Neon resource to the Development environment, run `vercel env pull .env.local`, then `pnpm dev`.
 
+### Account emails
+
+Password reset, email confirmation and sign-in link emails are sent by the app through [Resend](https://resend.com), from `TickerQuill <no-reply@n3el.dev>`. Neon Auth hands each one over by calling a webhook.
+
+1. Add `RESEND_API_KEY` to the project. The sender's domain (`n3el.dev`) must be verified in Resend.
+2. In the Neon Console, open **Auth → Configuration → Webhooks**. Enable delivery, set the URL to `https://tickerquill.n3el.dev/api/webhooks/neon-auth`, and select the `send.magic_link` event.
+3. In the Neon Auth settings, make sure the site's origin (`https://tickerquill.n3el.dev`) is a trusted domain. The reset link returns to `/login/reset`, and Neon refuses to redirect anywhere it does not trust.
+
+Once `send.magic_link` is selected, Neon stops sending every email that carries a link, which includes the confirmation link at sign-up when the project verifies by link. There is no fallback: if all three delivery attempts fail (the webhook or Resend is down), the request fails for the user. Deploy the app with `RESEND_API_KEY` set before turning the webhook on.
+
 ## How it fits together
 
 | Area | Where |
@@ -36,6 +46,7 @@ Personal stock and portfolio tracker. It covers:
 | Portfolio math | `lib/portfolio/math.ts`: merges lots, then computes gain/loss, weights, and paper cash. |
 | Data access | `lib/portfolio/repo.ts`: server-only SQL, with every statement filtered by `user_id`. The browser calls `/api/portfolios` and `/api/holdings`. |
 | Live prices | `components/LivePrices.tsx`: a REST snapshot, then the Finnhub WebSocket. The socket key is only served to signed-in users. |
+| Forgot password | `app/login/forgot` asks Neon Auth for a reset link; `app/login/reset` sets the new password. Neon calls `app/api/webhooks/neon-auth` (`lib/auth/webhook.ts`), which checks Neon's Ed25519 signature and sends the email (`lib/mail/`). |
 | AI sign-in | `app/api/ai/[provider]/*`: paste-the-callback OAuth via `shared-ai-auth`. Tokens are kept in chunked httpOnly cookies, never in the database. |
 | AI chat | `app/api/ai/chat`: gathers portfolios, quotes, analyst data, news, and forecasts into the system prompt (`lib/ai/context.ts`), then streams NDJSON back. Read-only: the assistant cannot change data. |
 
