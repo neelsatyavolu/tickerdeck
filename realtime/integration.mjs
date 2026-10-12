@@ -18,6 +18,8 @@ const mf = new Miniflare({
   bindings: { PRICE_STREAM_SECRET: secret, FINNHUB_API_KEY: "local-test-provider-key" },
   durableObjects: { PRICE_STREAM: { className: "PriceStream", useSQLite: true } },
   outboundService: async (request) => {
+    // Yahoo is tried first; refusing it here exercises the Finnhub fallback.
+    if (new URL(request.url).hostname === "streamer.finance.yahoo.com") return new Response("Unavailable", { status: 503 });
     assert.equal(new URL(request.url).hostname, "ws.finnhub.io");
     assert.equal(request.headers.get("Upgrade"), "websocket");
     const [client, server] = Object.values(new WebSocketPair());

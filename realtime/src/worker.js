@@ -1,27 +1,19 @@
 import { DurableObject } from "cloudflare:workers";
 import { verifyStreamTicket } from "../../lib/market/streamTicket.ts";
 import { PriceFanout } from "./fanout.js";
+import { YAHOO_STREAM, yahooUpstream } from "./yahoo.js";
 
 export class PriceStream extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     console.info("[prices] relay started", "handshake-timeout-cleared");
+    // Yahoo ticks about once a second for every symbol; Finnhub's free feed is
+    // faster per trade but passes on too few of them, so it is only the fallback.
     this.feed = new PriceFanout(async () => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
       try {
-        const response = await fetch(`https://ws.finnhub.io?token=${encodeURIComponent(this.env.FINNHUB_API_KEY)}`, {
-          headers: { Upgrade: "websocket" },
-          signal: controller.signal,
-        });
-        const upstream = response.webSocket;
-        if (!upstream) {
-          console.warn("[prices] handshake rejected", response.status);
-          throw new Error("Price provider did not upgrade");
-        }
-        upstream.accept();
-        upstream.addEventListener("close", (event) => console.warn("[prices] upstream closed", event.code));
-        upstream.addEventListener("error", () => console.warn("[prices] upstream error"));
+        return yahooUpstream(await this.open("yahoo", YAHOO_STREAM));
+      } catch {
+        const upstream = await this.open("finnhub", `https://ws.finnhub.io?token=${encodeURIComponent(this.env.FINNHUB_API_KEY)}`);
         upstream.addEventListener("message", (event) => {
           try {
             const frame = JSON.parse(event.data);
@@ -29,13 +21,35 @@ export class PriceStream extends DurableObject {
           } catch { /* ignore malformed frames */ }
         });
         return upstream;
-      } finally {
-        // workerd retains the fetch signal on upgraded sockets; only time out the handshake.
-        clearTimeout(timeout);
       }
     });
     for (const socket of ctx.getWebSockets()) {
       this.feed.addClient(socket, socket.deserializeAttachment()?.symbols ?? []);
+    }
+  }
+
+  /** Open a provider WebSocket, or throw if it doesn't upgrade within ten seconds. */
+  async open(provider, url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(url, { headers: { Upgrade: "websocket" }, signal: controller.signal });
+      const upstream = response.webSocket;
+      if (!upstream) {
+        console.warn("[prices] handshake rejected", provider, response.status);
+        throw new Error("Price provider did not upgrade");
+      }
+      upstream.accept();
+      console.info("[prices] upstream connected", provider);
+      upstream.addEventListener("close", (event) => console.warn("[prices] upstream closed", provider, event.code));
+      upstream.addEventListener("error", () => console.warn("[prices] upstream error", provider));
+      return upstream;
+    } catch (err) {
+      console.warn("[prices] upstream unavailable", provider, err instanceof Error ? err.name : "unknown");
+      throw err;
+    } finally {
+      // workerd retains the fetch signal on upgraded sockets; only time out the handshake.
+      clearTimeout(timeout);
     }
   }
 
