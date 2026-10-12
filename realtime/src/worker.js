@@ -5,6 +5,7 @@ import { PriceFanout } from "./fanout.js";
 export class PriceStream extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    console.info("[prices] relay started", "handshake-timeout-cleared");
     this.feed = new PriceFanout(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
@@ -14,8 +15,19 @@ export class PriceStream extends DurableObject {
           signal: controller.signal,
         });
         const upstream = response.webSocket;
-        if (!upstream) throw new Error("Price provider did not upgrade");
+        if (!upstream) {
+          console.warn("[prices] handshake rejected", response.status);
+          throw new Error("Price provider did not upgrade");
+        }
         upstream.accept();
+        upstream.addEventListener("close", (event) => console.warn("[prices] upstream closed", event.code));
+        upstream.addEventListener("error", () => console.warn("[prices] upstream error"));
+        upstream.addEventListener("message", (event) => {
+          try {
+            const frame = JSON.parse(event.data);
+            if (frame.type === "error") console.warn("[prices] provider error", String(frame.msg ?? frame.error ?? "unknown").replaceAll(this.env.FINNHUB_API_KEY, "[redacted]"));
+          } catch { /* ignore malformed frames */ }
+        });
         return upstream;
       } finally {
         // workerd retains the fetch signal on upgraded sockets; only time out the handshake.
