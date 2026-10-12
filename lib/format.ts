@@ -48,6 +48,11 @@ export function shortDate(t: number | string): string {
   return new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Date and time of day, for charts drawn from minute bars: "Oct 12, 1:05 PM". */
+export function shortTime(t: number): string {
+  return new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
 export function timeAgo(t: number, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - t) / 1000));
   if (s < 60) return `${s}s ago`;

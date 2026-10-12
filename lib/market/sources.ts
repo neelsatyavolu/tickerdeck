@@ -3,13 +3,14 @@ import * as cnbc from "./cnbc";
 import * as coinbase from "./coinbase";
 import { isCrypto, searchCrypto } from "./crypto";
 import * as finnhub from "./finnhub";
-import { isIndex, searchIndexes } from "./indexes";
+import { indexInfo, isIndex, searchIndexes } from "./indexes";
 import * as nasdaq from "./nasdaq";
 import * as yahoo from "./yahoo";
 import { weeklyBefore } from "./downsample";
 import { UpstreamError } from "./http";
 import { newYorkDate, openedToday } from "@/lib/marketHours";
-import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
+import { INTRADAY, lastSessions } from "./intraday";
+import type { AnalystTargets, HistoryRange, IntradayRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
 // Which provider answers what (market indexes like ^GSPC always go to CNBC,
 // crypto like BTC-USD always to Coinbase):
@@ -123,6 +124,23 @@ export async function history(symbol: string, range: HistoryRange): Promise<Pric
   if (range === "10y" || full.length === 0) return full;
   const from = full[full.length - 1].t - RANGE_DAYS[range] * DAY;
   return full.filter((p) => p.t >= from);
+}
+
+/**
+ * Minute bars for the last few trading days (1D and 3D by the minute, 1W and
+ * 2W in five-minute bars). Coins use Coinbase candles; anything with no
+ * intraday bars, such as a mutual fund, falls back to its last daily closes.
+ */
+export async function intraday(symbol: string, range: IntradayRange): Promise<PricePoint[]> {
+  if (isCrypto(symbol)) return coinbase.intraday(symbol, range);
+  const { days, minutes, lookbackDays } = INTRADAY[range];
+  const bars = await cnbc.intraday(indexInfo(symbol)?.cnbc ?? symbol, minutes, lookbackDays).catch((err) => {
+    console.warn("[market] no intraday bars", symbol, err instanceof Error ? err.message : err);
+    return [] as PricePoint[];
+  });
+  const sessions = lastSessions(bars, days);
+  if (sessions.length >= 2) return sessions;
+  return (await history(symbol, "1mo")).slice(-(days + 1));
 }
 
 export async function analystTargets(symbol: string): Promise<{ targets: AnalystTargets; history: TargetPoint[] } | null> {

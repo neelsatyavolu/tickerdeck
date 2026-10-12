@@ -2,7 +2,8 @@
 
 import { niceTicks, scale, tickLabel } from "@/lib/chart";
 import { measure } from "@/lib/measure";
-import { pct, points as fmtPoints, shortDate, usd } from "@/lib/format";
+import { pct, points as fmtPoints, shortDate, shortTime, usd } from "@/lib/format";
+import { span } from "@/lib/market/intraday";
 import { useDragMeasure } from "./useDragMeasure";
 import { useWidth } from "./useWidth";
 
@@ -20,6 +21,8 @@ type Props = {
   showVolume?: boolean;
   /** Dollars (default) or plain points, for indexes. */
   money?: boolean;
+  /** Minute bars: space points evenly so nights and weekends take no room, and label them with the time. */
+  intraday?: boolean;
 };
 
 const PAD = { top: 12, right: 12, bottom: 24, left: 56 };
@@ -28,14 +31,16 @@ const VOLUME_H = 44;
 const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 /** Price/value line with an area wash, crosshair and tooltip; optional overlay and volume. */
-export function LineChart({ points, height = 260, label, overlay, showVolume, money = true }: Props) {
+export function LineChart({ points, height = 260, label, overlay, showVolume, money = true, intraday = false }: Props) {
+  const when = intraday ? shortTime : shortDate;
   const fmt = (n: number) => (money ? usd(n) : fmtPoints(n));
   const [ref, width] = useWidth<HTMLDivElement>();
   const enough = points.length >= 2;
   const t0 = enough ? points[0].t : 0;
   const t1 = enough ? points[points.length - 1].t : 1;
   const x = scale(t0, t1, PAD.left, width - PAD.right);
-  const xs = points.map((p) => x(p.t));
+  const byIndex = scale(0, Math.max(1, points.length - 1), PAD.left, width - PAD.right);
+  const xs = points.map((p, i) => (intraday ? byIndex(i) : x(p.t)));
   const { hover, anchor, measuring, handlers } = useDragMeasure(xs);
 
   if (!enough) return <div className="notice">Not enough history to chart.</div>;
@@ -74,7 +79,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
   return (
     <div>
       <div className="chart" ref={ref}>
-        <svg width={width} height={height} role="img" aria-label={`${label}: ${fmt(first.v)} on ${shortDate(first.t)} to ${fmt(last.v)} on ${shortDate(last.t)}`} {...handlers} style={{ cursor: "crosshair" }}>
+        <svg width={width} height={height} role="img" aria-label={`${label}: ${fmt(first.v)} on ${when(first.t)} to ${fmt(last.v)} on ${when(last.t)}`} {...handlers} style={{ cursor: "crosshair" }}>
           <g className="grid">
             {ticks.map((t) => (
               <line key={t} x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
@@ -84,8 +89,8 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
             {ticks.map((t) => (
               <text key={t} x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">{tickLabel(t, money)}</text>
             ))}
-            <text x={PAD.left} y={height - 6}>{shortDate(first.t)}</text>
-            <text x={width - PAD.right} y={height - 6} textAnchor="end">{shortDate(last.t)}</text>
+            <text x={PAD.left} y={height - 6}>{when(first.t)}</text>
+            <text x={width - PAD.right} y={height - 6} textAnchor="end">{when(last.t)}</text>
             {hasVolume && <text x={PAD.left - 8} y={plotBottom + 8 + VOLUME_H / 2} dy="0.32em" textAnchor="end">vol</text>}
           </g>
           {hasVolume && (
@@ -122,7 +127,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
         </svg>
         {m && (
           <div className="tooltip measure-tip" style={{ left: (xs[m.lo] + xs[m.hi]) / 2, top: PAD.top + 4 }} role="status">
-            <div className="t-label">{shortDate(m.from.t)} → {shortDate(m.to.t)} · {m.days} day{m.days === 1 ? "" : "s"}</div>
+            <div className="t-label">{when(m.from.t)} → {when(m.to.t)} · {intraday ? span(m.to.t - m.from.t) : `${m.days} day${m.days === 1 ? "" : "s"}`}</div>
             <div style={{ color: mColor }}>
               {m.change >= 0 ? "+" : "−"}{fmt(Math.abs(m.change))} ({pct(m.pct)})
             </div>
@@ -132,7 +137,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
         {anchor === null && hover !== null && <div className="chart-hint" aria-hidden="true">drag to measure</div>}
         {!m && h && hover !== null && (
           <div className="tooltip" style={{ left: xs[hover], top: y(h.v) }}>
-            <div className="t-label">{shortDate(h.t)}</div>
+            <div className="t-label">{when(h.t)}</div>
             <div>{fmt(h.v)}</div>
             {h.volume ? <div className="t-label">vol {compact(h.volume)}</div> : null}
             {hTarget && <div className="t-label">{overlay?.label} {fmt(hTarget.v)}</div>}

@@ -11,6 +11,8 @@ const HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 // Index levels on CNBC move every 10 to 15 seconds; browsers ask every 5.
 const QUOTE_TTL = 5_000;
 const HISTORY_TTL = 60 * 60_000;
+const BARS_TTL = 30_000;
+const DAY = 86_400_000;
 
 type RawQuote = { symbol: string; last?: string; previous_day_closing?: string; last_time?: string };
 type RawQuotes = { FormattedQuoteResult?: { FormattedQuote?: RawQuote[] } };
@@ -56,6 +58,16 @@ export async function quotes(symbols: string[]): Promise<QuoteSnapshot[]> {
     const qs = new URLSearchParams({ symbols: key, requestMethod: "itv", noform: "1", partnerId: "2", fund: "1", exthrs: "1", output: "json" });
     const raw = await fetchJson<RawQuotes>("cnbc", `https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?${qs}`, { headers: HEADERS });
     return parseQuotes(raw, new Map(known.map(([s, c]) => [c, s])));
+  });
+}
+
+/** One- or five-minute bars, extended hours included, for a CNBC symbol (".SPX", "AAPL"). */
+export function intraday(cnbcSymbol: string, minutes: 1 | 5, lookbackDays: number): Promise<PricePoint[]> {
+  return memo(`cnbc:bars:${cnbcSymbol}:${minutes}:${lookbackDays}`, BARS_TTL, async () => {
+    const stamp = (t: number) => new Date(t).toISOString().replace(/\D/g, "").slice(0, 14);
+    const now = Date.now();
+    const url = `https://ts-api.cnbc.com/harmony/app/bars/${encodeURIComponent(cnbcSymbol)}/${minutes}M/${stamp(now - lookbackDays * DAY)}/${stamp(now + DAY)}/adjusted/EST5EDT.json`;
+    return parseBars(await fetchJson<RawBars>("cnbc", url, { headers: HEADERS }));
   });
 }
 

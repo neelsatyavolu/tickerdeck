@@ -2,7 +2,8 @@ import "server-only";
 import { memo } from "./cache";
 import { isCrypto } from "./crypto";
 import { fetchJson, UpstreamError } from "./http";
-import type { PricePoint, QuoteSnapshot } from "./types";
+import { candleWindows } from "./intraday";
+import type { IntradayRange, PricePoint, QuoteSnapshot } from "./types";
 
 // Coinbase Exchange's public market-data API, used for crypto (BTC-USD and the
 // other pairs in crypto.ts). Official, and needs no key.
@@ -10,6 +11,7 @@ import type { PricePoint, QuoteSnapshot } from "./types";
 const BASE = "https://api.exchange.coinbase.com";
 const QUOTE_TTL = 10_000;
 const HISTORY_TTL = 60 * 60_000;
+const INTRADAY_TTL = 30_000;
 const DAY = 86_400_000;
 const HISTORY_DAYS = 3653; // ten years, like the other history sources
 const PAGE_CANDLES = 300; // the most Coinbase returns per request
@@ -86,6 +88,31 @@ async function quote(symbol: string): Promise<QuoteSnapshot | null> {
 export async function quotes(symbols: string[]): Promise<QuoteSnapshot[]> {
   const results = await Promise.all(symbols.filter(isCrypto).map((s) => quote(s).catch(() => null)));
   return results.filter((q): q is QuoteSnapshot => q !== null);
+}
+
+// Coins trade around the clock, so their short ranges are calendar days, in
+// the finest candle that fits one or two requests.
+const INTRADAY_CANDLES: Record<IntradayRange, { days: number; seconds: number }> = {
+  "1d": { days: 1, seconds: 300 },
+  "3d": { days: 3, seconds: 900 },
+  "1w": { days: 7, seconds: 3600 },
+  "2w": { days: 14, seconds: 3600 },
+};
+
+export function intraday(symbol: string, range: IntradayRange): Promise<PricePoint[]> {
+  if (!isCrypto(symbol)) return Promise.reject(new UpstreamError("coinbase", 404, `No price history for ${symbol}`));
+  return memo(`cb:intraday:${symbol}:${range}`, INTRADAY_TTL, async () => {
+    const { days, seconds } = INTRADAY_CANDLES[range];
+    const end = Date.now();
+    const pages = await Promise.all(
+      candleWindows(end - days * DAY, end, seconds).map(({ start, end: to }) => {
+        const qs = new URLSearchParams({ granularity: String(seconds), start: new Date(start).toISOString(), end: new Date(to).toISOString() });
+        return get<unknown>(`/products/${symbol}/candles?${qs}`).then(parseCandles);
+      }),
+    );
+    // Neighbouring windows share their boundary candle.
+    return [...new Map(pages.flat().map((p) => [p.t, p])).values()].sort((a, b) => a.t - b.t);
+  });
 }
 
 /** Up to ten years of daily closes, or as far back as the coin has traded on Coinbase. */

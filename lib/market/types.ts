@@ -36,6 +36,9 @@ export type SymbolMatch = { symbol: string; name: string; type: string };
 
 export const HISTORY_RANGES = ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"] as const;
 export type HistoryRange = (typeof HISTORY_RANGES)[number];
+/** Short ranges drawn from minute bars: one, three, five and ten trading days. */
+export const INTRADAY_RANGES = ["1d", "3d", "1w", "2w"] as const;
+export type IntradayRange = (typeof INTRADAY_RANGES)[number];
 
 export type TargetPoint = { t: number; target: number; buy: number; hold: number; sell: number };
 

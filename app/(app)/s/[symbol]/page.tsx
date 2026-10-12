@@ -14,7 +14,7 @@ import { WatchButton } from "@/components/Watchlist";
 import { AddToDashboard } from "@/components/dashboard/AddToDashboard";
 import { EarningsChart, KeyStatsGrid, Peers, PerformanceStrip, YahooLinks } from "@/components/StockPanels";
 import { useExtended } from "@/components/useExtended";
-import { useHistories } from "@/components/useHistory";
+import { useHistories, useIntraday } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
 import { cachedApi } from "@/lib/client/api";
 import { addHolding } from "@/lib/client/portfolios";
@@ -37,8 +37,11 @@ type StockInfo = {
 };
 
 const RANGES = { "1M": 31, "3M": 92, "6M": 183, "1Y": 366, "2Y": 731, "5Y": 1827, "10Y": 3653 } as const;
-type Range = keyof typeof RANGES;
-const RANGE_KEYS = Object.keys(RANGES) as Range[];
+// Short ranges are drawn from minute bars: 1D and 3D by the minute, 1W and 2W in five-minute bars.
+const INTRADAY = { "1D": "1d", "3D": "3d", "1W": "1w", "2W": "2w" } as const;
+type Range = keyof typeof INTRADAY | keyof typeof RANGES;
+const RANGE_KEYS = [...Object.keys(INTRADAY), ...Object.keys(RANGES)] as Range[];
+const isIntraday = (r: Range): r is keyof typeof INTRADAY => r in INTRADAY;
 
 export default function StockPage() {
   const params = useParams<{ symbol: string }>();
@@ -70,7 +73,15 @@ export default function StockPage() {
   const prevClose = live?.prevClose ?? info?.quote.value?.prevClose ?? null;
   const change = price !== null && prevClose ? price - prevClose : null;
   const all = useMemo(() => hist[symbol] ?? [], [hist, symbol]);
-  const points = useMemo(() => lastDays(all, RANGES[range]).map((p) => ({ t: p.t, v: p.close, volume: p.volume })), [all, range]);
+  const intraday = isIntraday(range);
+  const bars = useIntraday(symbol, intraday ? INTRADAY[range] : null);
+  const points = useMemo(() => {
+    if (!isIntraday(range)) return lastDays(all, RANGES[range]).map((p) => ({ t: p.t, v: p.close, volume: p.volume }));
+    const series = bars.points.map((p) => ({ t: p.t, v: p.close, volume: p.volume }));
+    const lastBar = series[series.length - 1];
+    // The live trade extends the last bar, so the line moves between refreshes.
+    return live?.fromTrade && lastBar && live.time > lastBar.t ? [...series, { t: live.time, v: live.price }] : series;
+  }, [all, range, bars.points, live]);
   const yearPoints = useMemo(() => lastDays(all, 366).map((p) => ({ t: p.t, v: p.close })), [all]);
   const returns = useMemo(() => periodReturns(all, price), [all, price]);
   const targetHistory = useMemo(() => (info?.targets.value?.history ?? []).map((p) => ({ t: p.t, v: p.target })), [info]);
@@ -141,12 +152,12 @@ export default function StockPage() {
           <h2 className="display">Price</h2>
           <Seg label="History range" value={range} options={RANGE_KEYS} onChange={setRange} />
         </div>
-        {failed.length ? (
+        {(intraday ? bars.failed : failed.length > 0) ? (
           <div className="notice">No price history available for {symbol}.</div>
-        ) : histLoading && all.length === 0 ? (
+        ) : (intraday ? bars.loading : histLoading && all.length === 0) ? (
           <div className="notice">Loading history<span className="caret" aria-hidden="true" /></div>
         ) : (
-          <LineChart points={points} label={`${symbol} price`} height={320} money={!isIndexPage} showVolume={!isIndexPage && RANGES[range] <= 731} overlay={targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
+          <LineChart points={points} label={`${symbol} price`} height={320} money={!isIndexPage} intraday={intraday} showVolume={!isIndexPage && (isIntraday(range) || RANGES[range] <= 731)} overlay={!intraday && targetHistory.length ? { label: "mean analyst target", points: targetHistory } : undefined} />
         )}
       </section>
 
