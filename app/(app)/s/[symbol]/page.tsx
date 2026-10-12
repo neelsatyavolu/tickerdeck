@@ -18,7 +18,7 @@ import { useHistories, useIntraday } from "@/components/useHistory";
 import { Change, ErrorText, Seg } from "@/components/ui";
 import { cachedApi } from "@/lib/client/api";
 import { addHolding } from "@/lib/client/portfolios";
-import { priceOf, timeAgo } from "@/lib/format";
+import { priceOf, timeAgo, usd } from "@/lib/format";
 import { yahooUrl } from "@/lib/links";
 import { lastDays, periodReturns } from "@/lib/market/performance";
 import type { AnalystTargets, EarningsPoint, KeyStats, NewsItem, Profile, QuoteSnapshot, Recommendation, TargetPoint } from "@/lib/market/types";
@@ -88,6 +88,7 @@ export default function StockPage() {
   const stats = info?.stats.value;
   const name = stats?.name ?? info?.profile.value?.name ?? null;
   const meta = [stats?.exchange ?? info?.profile.value?.exchange, stats?.sector, stats?.industry ?? info?.profile.value?.industry, stats?.assetClass === "etf" ? "ETF" : stats?.assetClass === "mutualfunds" ? "Mutual fund" : stats?.assetClass === "index" ? "Market index" : stats?.assetClass === "crypto" ? "Cryptocurrency" : null].filter(Boolean).join(" · ");
+  const marketCap = stats?.marketCap ?? info?.profile.value?.marketCap ?? null;
   const rec = info?.recommendations.value?.[0];
   const isIndexPage = stats?.assetClass === "index";
   const isCryptoPage = stats?.assetClass === "crypto";
@@ -117,6 +118,12 @@ export default function StockPage() {
         <div>
           <h1 className="display">{symbol}</h1>
           <div className="serif muted" style={{ fontSize: 19, marginTop: 4 }}>{name ?? " "}</div>
+          {marketCap !== null && (
+            <div className="row" style={{ marginTop: 8 }}>
+              <span className="label">Market cap</span>
+              <span className="num">{usd(marketCap, { compact: true })}</span>
+            </div>
+          )}
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="hero-value" style={{ fontSize: 40 }}>{priceOf(symbol, price)}</div>
