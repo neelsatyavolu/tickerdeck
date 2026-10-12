@@ -7,10 +7,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ProposalCard } from "./dashboard/ProposalCard";
 import { EFFORT_LABEL } from "@/lib/ai/options";
+import type { Source } from "@/lib/ai/sse";
 import { effortOf, updateAiPrefs, useAiPrefs, type Provider } from "@/lib/client/aiPrefs";
 import { DASHBOARD_FENCE, ENHANCE_PROMPT, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; sources?: Source[] };
 type Focus = { portfolioId?: string; symbol?: string; dashboardId?: string };
 type Status = Record<Provider, boolean>;
 type Models = Record<Provider, { id: string; label: string }[]>;
@@ -99,6 +100,28 @@ function Reply({ text, dashboardId }: { text: string; dashboardId?: string }) {
   );
 }
 
+/** The web pages an answer cited, each showing its real host. */
+function Sources({ items }: { items: Source[] }) {
+  const links = items.flatMap((s) => {
+    const link = safeLink(s.url);
+    return link?.host ? [{ href: link.href, host: link.host, title: s.title }] : [];
+  });
+  if (links.length === 0) return null;
+  return (
+    <div className="assist-sources">
+      <div className="label">Sources</div>
+      <ol>
+        {links.map((l, i) => (
+          <li key={i}>
+            <a href={l.href} target="_blank" rel="noopener noreferrer nofollow">{l.title ?? l.host}</a>
+            {l.title && <span className="faint mono"> ({l.host})</span>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function Markdown({ text }: { text: string }) {
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} unwrapDisallowed components={MD_COMPONENTS}>
@@ -107,8 +130,16 @@ function Markdown({ text }: { text: string }) {
   );
 }
 
-/** Reads the NDJSON stream from /api/ai/chat, calling onText for each chunk. */
-async function streamAnswer(body: object, onText: (t: string) => void, signal: AbortSignal, onTier?: (tier: string) => void): Promise<void> {
+type StreamHandlers = {
+  onText: (t: string) => void;
+  onTier: (tier: string) => void;
+  /** What the assistant is doing while no text is arriving, e.g. "Searching the web". */
+  onStatus: (status: string) => void;
+  onSources: (sources: Source[]) => void;
+};
+
+/** Reads the NDJSON stream from /api/ai/chat, calling the handler for each line. */
+async function streamAnswer(body: object, signal: AbortSignal, on: StreamHandlers): Promise<void> {
   const res = await fetch("/api/ai/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -131,9 +162,11 @@ async function streamAnswer(body: object, onText: (t: string) => void, signal: A
       const line = buffer.slice(0, nl);
       buffer = buffer.slice(nl + 1);
       if (!line) continue;
-      const msg = JSON.parse(line) as { t?: string; e?: string; tier?: string };
-      if (msg.t) onText(msg.t);
-      if (msg.tier) onTier?.(msg.tier);
+      const msg = JSON.parse(line) as { t?: string; e?: string; tier?: string; s?: string; src?: Source[] };
+      if (msg.t) on.onText(msg.t);
+      if (msg.tier) on.onTier(msg.tier);
+      if (msg.s) on.onStatus(msg.s);
+      if (msg.src) on.onSources(msg.src);
       if (msg.e) throw new Error(msg.e);
     }
   }
@@ -163,6 +196,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const effort = effortOf(prefs, provider);
   const fast = provider === "codex" && prefs.fast;
   const [lastTier, setLastTier] = useState<string | null>(null);
+  // What the assistant is doing between stretches of text (searching, reading data).
+  const [activity, setActivity] = useState<string | null>(null);
 
   const refreshStatus = useCallback(async () => applyStatus(await loadStatus()), [applyStatus]);
 
@@ -183,26 +218,35 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       setMessages([...history, { role: "assistant", content: "" }]);
       setLastTier(null);
+      setActivity(null);
+      // Only the newest request may touch the thread; a replaced one must not write into its successor's turn.
+      const updateLast = (change: (last: Msg) => Msg) =>
+        setMessages((prev) => (abort.current === ctrl && prev.length ? [...prev.slice(0, -1), change(prev[prev.length - 1])] : prev));
       try {
         await streamAnswer(
-          { provider, model: modelPref[provider], messages: history, focus, effort, fast },
-          (t) =>
-            setMessages((prev) => {
-              const next = prev.slice();
-              const last = next[next.length - 1];
-              next[next.length - 1] = { ...last, content: last.content + t };
-              return next;
-            }),
+          { provider, model: modelPref[provider], messages: history.map(({ role, content }) => ({ role, content })), focus, effort, fast },
           ctrl.signal,
-          setLastTier,
+          {
+            onText: (t) => {
+              setActivity(null);
+              updateLast((last) => ({ ...last, content: last.content + t }));
+            },
+            onTier: setLastTier,
+            onStatus: setActivity,
+            onSources: (sources) => updateLast((last) => ({ ...last, sources })),
+          },
         );
       } catch (err) {
+        // Stopped or replaced by a newer question: whoever aborted this request already tidied the thread.
+        if (ctrl.signal.aborted) return;
         // Drop an empty assistant turn so it isn't shown or sent upstream next time.
         setMessages((prev) => (prev[prev.length - 1]?.content ? prev : prev.slice(0, -1)));
-        if (ctrl.signal.aborted) return;
         setError(err instanceof Error ? err.message : "The assistant failed.");
       } finally {
-        if (abort.current === ctrl) setBusy(false);
+        if (abort.current === ctrl) {
+          setBusy(false);
+          setActivity(null);
+        }
       }
     },
     [provider, modelPref, effort, fast],
@@ -222,6 +266,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const stop = () => {
     abort.current?.abort();
     setBusy(false);
+    setActivity(null);
     setMessages((prev) => (prev.length && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev));
   };
 
@@ -250,7 +295,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const el = body.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [messages, error, busy]);
+  }, [messages, error, busy, activity]);
   const modelLabel = [
     models?.[provider]?.find((m) => m.id === modelPref[provider])?.label ?? `${PROVIDER_LABEL[provider]} default`,
     EFFORT_LABEL[effort].toLowerCase(),
@@ -316,7 +361,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           ) : messages.length === 0 ? (
             <div className="stack">
               <p className="assist-intro">
-                I can see your <em>portfolios</em>, <em>watchlist</em>, <em>dashboards</em>, live prices, analyst data and recent news{focus.symbol ? `, focused on ${focus.symbol}` : focus.portfolioId ? ", focused on this portfolio" : focus.dashboardId ? ", focused on this dashboard" : ""}. Ask about performance, risk, forecasts, or ask me to build dashboard panels.
+                I can see your <em>portfolios</em>, <em>watchlist</em>, <em>dashboards</em>, live prices, analyst data and recent news{focus.symbol ? `, focused on ${focus.symbol}` : focus.portfolioId ? ", focused on this portfolio" : focus.dashboardId ? ", focused on this dashboard" : ""}. I can also look up any ticker and <em>search the web</em>. Ask about performance, risk, forecasts, or ask me to build dashboard panels.
               </p>
               <div className="assist-try">
                 <div className="label" style={{ color: "var(--fg)" }}>Try</div>
@@ -331,7 +376,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 <div key={i} className="msg-user">{m.content}</div>
               ) : (
                 <div key={i} className="prose">
-                  {m.content ? <Reply text={m.content} dashboardId={focus.dashboardId} /> : <span className="caret" aria-label="Thinking" />}
+                  {m.content ? <Reply text={m.content} dashboardId={focus.dashboardId} /> : !activity && <span className="caret" aria-label="Thinking" />}
+                  {busy && activity && i === messages.length - 1 && <div className="notice">{activity}<span className="caret" aria-hidden="true" /></div>}
+                  {m.sources && <Sources items={m.sources} />}
                 </div>
               ),
             )

@@ -32,6 +32,7 @@ function TopBar() {
           <Link href="/d" aria-current={pathname.startsWith("/d") ? "page" : undefined}>Dashboards</Link>
           <Link href="/watchlist" aria-current={pathname === "/watchlist" ? "page" : undefined}>Watchlist</Link>
           <Link href="/news" aria-current={pathname === "/news" ? "page" : undefined}>News</Link>
+          <Link href="/insights" aria-current={pathname === "/insights" ? "page" : undefined}>AI insights</Link>
           <Link href="/settings" aria-current={pathname === "/settings" ? "page" : undefined}>Settings</Link>
         </nav>
         <span className="grow" />

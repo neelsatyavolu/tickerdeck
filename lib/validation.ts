@@ -73,6 +73,9 @@ export const chatRequestSchema = z.object({
     .optional(),
 });
 
+/** Which subscription and settings to write AI insights with. */
+export const insightsRequestSchema = chatRequestSchema.pick({ provider: true, model: true, effort: true, fast: true });
+
 export function firstIssue(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Invalid input";
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { forecastExposures } from "../forecast/service";
+import type { Horizon } from "../forecast/montecarlo";
 import { earnings, metrics, news, profile, recommendations } from "../market/finnhub";
 import { summary } from "../market/nasdaq";
 import { buildKeyStats, withHistoryVolume } from "../market/stats";
@@ -17,10 +18,12 @@ const MAX_PORTFOLIO_SYMBOLS = 40;
 const MAX_FOCUS_SYMBOLS = 12;
 const DETAILED_SYMBOLS = 3; // the rest get quote, key stats and returns only
 const FOCUS_HORIZON = "3m" as const;
+const HORIZON_LABEL: Record<Horizon, string> = { "1w": "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", "1y": "1 year" };
 
 const orNull = <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-async function symbolContext(symbol: string, detailed: boolean): Promise<SymbolContext | null> {
+/** One ticker's data. Detailed adds the profile, analysts, earnings, headlines and a forecast over the horizon. */
+export async function symbolContext(symbol: string, detailed: boolean, horizon: Horizon = FOCUS_HORIZON): Promise<SymbolContext | null> {
   const q = await orNull(quote(symbol));
   if (!q) return null; // not a real ticker (e.g. an acronym we didn't filter)
   const [m, sum, hist] = await Promise.all([orNull(metrics(symbol)), orNull(summary(symbol)), orNull(history(symbol, "10y"))]);
@@ -36,7 +39,7 @@ async function symbolContext(symbol: string, detailed: boolean): Promise<SymbolC
     orNull(analystTargets(symbol).then((r) => r?.targets ?? null)),
     orNull(recommendations(symbol)),
     orNull(news(symbol, 7)),
-    orNull(forecastExposures([{ symbol, value: q.price }], FOCUS_HORIZON)),
+    orNull(forecastExposures([{ symbol, value: q.price }], horizon)),
     orNull(earnings(symbol)),
   ]);
   return {
@@ -45,7 +48,7 @@ async function symbolContext(symbol: string, detailed: boolean): Promise<SymbolC
     targets,
     recommendations: recs ?? [],
     news: headlines ?? [],
-    forecast: forecast ? { ...forecast, horizonLabel: "3 months" } : null,
+    forecast: forecast ? { ...forecast, horizonLabel: HORIZON_LABEL[horizon] } : null,
     earnings: earn ?? [],
   };
 }
