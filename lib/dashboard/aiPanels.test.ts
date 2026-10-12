@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffLayouts, extractProposals, panelGuide } from "./aiPanels";
+import { diffLayouts, ENHANCE_PROMPT, extractProposals, panelGuide } from "./aiPanels";
 import type { Panel } from "./schema";
 
 describe("extractProposals: add", () => {
@@ -62,5 +62,13 @@ describe("panelGuide", () => {
     for (const t of ["tiles", "price", "compare", "heatmap", "returns", "movers", "forecast", "stats", "analysts", "news", "portfolio", "lookup"]) expect(guide).toContain(`- ${t}:`);
     expect(guide).toContain("```tickerdeck-dashboard");
     expect(guide).toContain("add up to exactly 12");
+  });
+
+  it("asks for dashboards that are full of information, and says how to enhance one", () => {
+    const guide = panelGuide();
+    expect(guide).toContain("Market news");
+    expect(guide).toMatch(/not only charts/);
+    expect(guide).toMatch(/enhance/i);
+    expect(ENHANCE_PROMPT).toMatch(/Enhance this dashboard/);
   });
 });

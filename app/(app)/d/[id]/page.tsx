@@ -12,6 +12,7 @@ import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { ErrorText } from "@/components/ui";
 import { useWakeLock, type WakeState } from "@/components/useWakeLock";
+import { ENHANCE_PROMPT } from "@/lib/dashboard/aiPanels";
 import { PANEL_META, PANEL_WIDTHS, type Panel } from "@/lib/dashboard/schema";
 import { isTidy, rowTemplate, tidyLayout } from "@/lib/dashboard/tidy";
 import { moveItem } from "@/lib/reorder";
@@ -151,6 +152,7 @@ export default function DashboardPage() {
         {!editing && (
           <div className="row" style={{ gap: 4 }}>
             {panels.length > 0 && <button className="btn-text" onClick={enterDisplay} title="Fill the screen with this dashboard and keep the screen awake">Display mode</button>}
+            {panels.length > 0 && <button className="btn-text" onClick={() => ask(ENHANCE_PROMPT, { dashboardId: id })} title="Ask the assistant to add news, fundamentals and more to this dashboard">Enhance with AI</button>}
             <button className="btn-text" onClick={() => setEditing(true)}>Edit</button>
             <button className="btn btn-primary" onClick={() => { setAdding(true); setEditing(true); }}>+ Add panel</button>
           </div>

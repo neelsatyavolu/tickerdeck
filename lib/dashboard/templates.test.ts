@@ -33,22 +33,50 @@ describe("templates", () => {
 describe("wall layout", () => {
   const many = { portfolios: [{ id: "11111111-1111-4111-8111-111111111111", name: "Core", symbols: ["AAPL", "MSFT"] }, { id: "22222222-2222-4222-8222-222222222222", name: "Play", symbols: ["MSFT", "DHT"] }], watchlist: ["NVDA", "^GSPC", "AAPL"] };
 
-  it("fills the screen with one chart per symbol, deduplicated, heatmap first", () => {
+  const charts = (panels: { type: string; symbols: string[] }[]) => panels.filter((p) => p.type === "price").map((p) => p.symbols[0]);
+  const list = (n: number) => Array.from({ length: n }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
+
+  it("gives a short list prices, then a chart and headlines per symbol, then the numbers and market news", () => {
+    const d = buildTemplate("wall", { portfolios: [], watchlist: ["DHT", "CTVA", "AGIO"], source: "watchlist" });
+    expect(d.panels.map((p) => `${p.type}:${p.width}`)).toEqual([
+      "tiles:12",
+      "price:4", "price:4", "price:4",
+      "news:4", "news:4", "news:4",
+      "lookup:12",
+      "returns:8", "news:4",
+    ]);
+    expect(d.panels.filter((p) => p.type === "news").map((p) => p.symbols[0])).toEqual(["DHT", "CTVA", "AGIO", "^GSPC"]);
+    expect(d.panels.at(-1)?.title).toBe("Market news");
+  });
+
+  it("keeps each symbol's headlines under its chart, and skips them for indexes and crypto", () => {
     const d = buildTemplate("wall", { ...many, source: "all" });
     expect(d.name).toBe("Everything wall");
-    expect(d.panels[0]).toMatchObject({ type: "heatmap", width: 12 });
-    expect(d.panels.slice(1).map((p) => p.symbols[0])).toEqual(["AAPL", "MSFT", "DHT", "NVDA", "^GSPC"]);
-    expect(d.panels.slice(1).every((p) => p.type === "price")).toBe(true);
-    expect(d.panels.slice(1).map((p) => p.width)).toEqual([4, 4, 4, 6, 6]);
+    expect(charts(d.panels)).toEqual(["AAPL", "MSFT", "DHT", "NVDA", "^GSPC"]);
+    expect(d.panels.slice(1, 9).map((p) => `${p.type}:${p.symbols[0]}:${p.width}`)).toEqual([
+      "price:AAPL:4", "price:MSFT:4", "price:DHT:4",
+      "news:AAPL:4", "news:MSFT:4", "news:DHT:4",
+      "price:NVDA:6", "price:^GSPC:6",
+    ]);
+    expect(d.panels[9]).toMatchObject({ type: "news", symbols: ["NVDA"], width: 12 });
+    const coins = buildTemplate("wall", { portfolios: [], watchlist: ["BTC-USD", "^VIX"], source: "watchlist" });
+    expect(coins.panels.filter((p) => p.type === "news").map((p) => p.symbols[0])).toEqual(["^GSPC"]);
+  });
+
+  it("swaps per-symbol headlines for a heatmap and movers once the list is long", () => {
+    const d = buildTemplate("wall", { portfolios: [], watchlist: list(20), source: "watchlist" });
+    expect(d.panels.slice(0, 2).map((p) => `${p.type}:${p.width}`)).toEqual(["heatmap:8", "movers:4"]);
+    expect(charts(d.panels)).toHaveLength(20);
+    expect(d.panels.filter((p) => p.type === "news").map((p) => p.symbols[0])).toEqual(["^GSPC"]);
+    expect(d.panels.slice(-3).map((p) => p.type)).toEqual(["lookup", "returns", "news"]);
   });
 
   it("sizes the charts to the symbol count so every row spans the grid", () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 17].map(wallRows)).toEqual([
       [1], [2], [3], [2, 2], [3, 2], [3, 3], [4, 3], [4, 4], [3, 3, 3], [4, 3, 3], [4, 4, 4, 4], [4, 4, 3, 3, 3],
     ]);
-    for (let n = 1; n <= 39; n++) {
-      const symbols = Array.from({ length: n }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
-      expect(isTidy(buildTemplate("wall", { portfolios: [], watchlist: symbols, source: "watchlist" }).panels)).toBe(true);
+    for (let n = 1; n <= 40; n++) {
+      expect(isTidy(buildTemplate("wall", { portfolios: [], watchlist: list(n), source: "watchlist" }).panels)).toBe(true);
     }
   });
 
@@ -56,8 +84,8 @@ describe("wall layout", () => {
     const lists = { ...many, watchlists: [{ id: "c1", name: "Chips", symbols: ["AMD", "NVDA"] }] };
     const chips = buildTemplate("wall", { ...lists, source: "list:c1" });
     expect(chips.name).toBe("Chips wall");
-    expect(chips.panels.slice(1).map((p) => p.symbols[0])).toEqual(["AMD", "NVDA"]);
-    expect(buildTemplate("wall", { ...lists, source: "all" }).panels.slice(1).map((p) => p.symbols[0])).toContain("AMD");
+    expect(charts(chips.panels)).toEqual(["AMD", "NVDA"]);
+    expect(charts(buildTemplate("wall", { ...lists, source: "all" }).panels)).toContain("AMD");
   });
 
   it("explains an empty source instead of inventing symbols", () => {
@@ -67,9 +95,8 @@ describe("wall layout", () => {
 
   it("can be limited to one portfolio or the watchlist, and stays within 40 panels", () => {
     expect(buildTemplate("wall", { ...many, source: many.portfolios[1].id }).name).toBe("Play wall");
-    expect(buildTemplate("wall", { ...many, source: "watchlist" }).panels.slice(1).map((p) => p.symbols[0])).toEqual(["NVDA", "^GSPC", "AAPL"]);
-    const huge = { portfolios: [], watchlist: Array.from({ length: 60 }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`), source: "watchlist" };
-    expect(buildTemplate("wall", huge).panels).toHaveLength(40);
+    expect(charts(buildTemplate("wall", { ...many, source: "watchlist" }).panels)).toEqual(["NVDA", "^GSPC", "AAPL"]);
+    expect(buildTemplate("wall", { portfolios: [], watchlist: list(60), source: "watchlist" }).panels).toHaveLength(40);
   });
 });
 

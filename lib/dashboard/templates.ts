@@ -1,3 +1,4 @@
+import { isCrypto } from "../market/crypto";
 import { newPanelId, PANEL_META, panelsSchema, type Panel, type PanelWidth } from "./schema";
 
 // Starting layouts. Each is built from what the user has (portfolios,
@@ -25,7 +26,9 @@ type Template = {
   build: (ctx: TemplateContext) => Omit<Panel, "id">[];
 };
 
-const WALL_MAX_CHARTS = 39; // plus the heatmap = the 40-panel limit
+const WALL_MAX_CHARTS = 35; // plus heatmap, movers, fundamentals, returns and market news = the 40-panel limit
+/** Up to this many symbols, each chart gets its own headlines underneath. */
+const WALL_MAX_NEWS = 8;
 const BOARD_MAX_SYMBOLS = 120;
 
 /** Symbols for the wall: one portfolio, the watchlist, or everything (holdings first). */
@@ -65,6 +68,35 @@ function requireSymbols(ctx: TemplateContext): string[] {
   return symbols;
 }
 
+const evenWidth = (perRow: number) => (12 / perRow) as PanelWidth;
+
+/**
+ * The wall: today's prices, a chart per symbol (with its headlines while the
+ * list is short), then the numbers for every symbol and market news.
+ */
+function buildWall(symbols: string[]): Omit<Panel, "id">[] {
+  const panels: Omit<Panel, "id">[] = [];
+  if (symbols.length > PANEL_META.tiles.maxSymbols) {
+    panels.push({ type: "heatmap", title: "Today", symbols, width: 8 }, { type: "movers", title: "Movers", symbols, width: 4 });
+  } else if (symbols.length >= 2) {
+    panels.push({ type: "tiles", title: "Today", symbols, width: 12 });
+  }
+  let start = 0;
+  for (const perRow of wallRows(symbols.length)) {
+    const row = symbols.slice(start, (start += perRow));
+    for (const s of row) panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: evenWidth(perRow) });
+    // Indexes and crypto have no company headlines.
+    const covered = symbols.length <= WALL_MAX_NEWS ? row.filter((s) => !s.startsWith("^") && !isCrypto(s)) : [];
+    for (const s of covered) panels.push({ type: "news", title: `${s} news`, symbols: [s], width: evenWidth(covered.length) });
+  }
+  panels.push(
+    { type: "lookup", title: "Fundamentals", symbols: symbols.slice(0, PANEL_META.lookup.maxSymbols), width: 12 },
+    { type: "returns", title: "Returns", symbols: symbols.slice(0, PANEL_META.returns.maxSymbols), width: 8 },
+    { type: "news", title: "Market news", symbols: ["^GSPC"], width: 4 },
+  );
+  return panels;
+}
+
 const MEGA_CAPS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA", "BRK.B", "JPM", "LLY", "V", "XOM", "UNH", "WMT", "COST"];
 const BIG_TECH = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "TSLA"];
 const FUNDS = ["SPY", "VOO", "VTI", "QQQ", "SCHD", "VYM", "BND", "VTSAX"];
@@ -74,17 +106,10 @@ export const TEMPLATES: Template[] = [
   {
     id: "wall",
     name: "Everything wall",
-    description: "A screen full of small charts: one per symbol in a portfolio, your watchlist, or all of them, with a heatmap on top.",
+    description: "A screen full of information on a portfolio, your watchlist, or all of them: a chart per symbol with its headlines, fundamentals, returns and market news.",
     needsSource: true,
     noun: "wall",
-    build: (ctx) => {
-      const shown = requireSymbols(ctx).slice(0, WALL_MAX_CHARTS);
-      const panels: Omit<Panel, "id">[] = [];
-      if (shown.length >= 2) panels.push({ type: "heatmap", title: "Today", symbols: shown, width: 12 });
-      const widths = wallRows(shown.length).flatMap((perRow) => Array<PanelWidth>(perRow).fill((12 / perRow) as PanelWidth));
-      shown.forEach((s, i) => panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: widths[i] }));
-      return panels;
-    },
+    build: (ctx) => buildWall(requireSymbols(ctx).slice(0, WALL_MAX_CHARTS)),
   },
   {
     id: "board",

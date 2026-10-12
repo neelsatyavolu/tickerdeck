@@ -18,6 +18,9 @@ export const DASHBOARD_FENCE = "tickerdeck-dashboard";
 const FENCE_RE = new RegExp("```(" + PANEL_FENCE + "|" + DASHBOARD_FENCE + ")\\s*\\n([\\s\\S]*?)```", "g");
 const MAX_PANELS = 40;
 
+/** One-click request to fill out the open dashboard. */
+export const ENHANCE_PROMPT = "Enhance this dashboard: keep what's here and fill it out with news, fundamentals, returns and anything else useful.";
+
 export type Proposal =
   | { kind: "add"; panels: Panel[]; rejected: string[] }
   | { kind: "replace"; name?: string; panels: Panel[]; rejected: string[] };
@@ -122,12 +125,15 @@ export function panelGuide(): string {
     "Panel types:",
     ...types,
     "",
-    "Keep dashboards clean and organized:",
+    "Make dashboards full of information, not only charts:",
     "- Lead with a summary row: tiles or a heatmap at width 12.",
     "- Then the main chart (compare or price) at 8 beside a narrow companion at 4 (movers, news, analysts).",
+    "- Give the main tickers their own headlines (a news panel each, beside or under that ticker's chart), and include general market news: a news panel for ^GSPC titled \"Market news\".",
+    "- Add the numbers: lookup for fundamentals across every symbol, returns for performance, and stats or analysts for the one or two tickers that matter most.",
     "- Pair detail panels at 6 + 6 or 4 + 4 + 4. Every row's widths should add up to exactly 12.",
     "- Group related panels next to each other (one theme or ticker per row); don't repeat the same view.",
-    '- Short, specific titles (2-4 words, e.g. "Chips, 1 year"). Aim for 5-10 panels; never more than 12 per proposal.',
+    '- Short, specific titles (2-4 words, e.g. "Chips, 1 year"). Aim for 8-14 panels; go up to 24 for a list of many symbols.',
     "- Put a one-sentence explanation outside the block. Use one block per reply.",
+    "When asked to enhance, improve or fill out the open dashboard: reply with its complete layout in a " + DASHBOARD_FENCE + " block, keep every existing panel (by id) unless it duplicates another, widen panels so no row has a gap, and add what's missing from the list above for the symbols already on it.",
   ].join("\n");
 }

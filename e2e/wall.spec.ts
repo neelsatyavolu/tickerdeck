@@ -36,7 +36,8 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   expect(box!.width).toBeLessThan(520);
   await page.keyboard.press("Escape");
 
-  // Wall from the watchlist: heatmap plus one chart per symbol.
+  // Wall from the watchlist: prices, a chart per symbol, headlines for the four
+  // that aren't an index, then fundamentals, returns and market news.
   for (const s of ["AAPL", "MSFT", "VTSAX", "^GSPC", "DHT"]) {
     await page.evaluate((sym) => fetch("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: sym }) }), s);
   }
@@ -45,7 +46,7 @@ test("sign-in link, assistant window, and the everything wall", async ({ page })
   await card.getByLabel("Symbols for the wall").selectOption("watchlist");
   await card.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Watchlist wall" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".dash-panel")).toHaveCount(6);
+  await expect(page.locator(".dash-panel")).toHaveCount(13);
   for (const s of ["AAPL", "VTSAX", "^GSPC"]) await expect(page.getByRole("img", { name: new RegExp(`^${s.replace("^", "\\^")} price`) })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Display mode" })).toBeVisible();
 });

@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import { ProposalCard } from "./dashboard/ProposalCard";
 import { EFFORT_LABEL } from "@/lib/ai/options";
 import { effortOf, updateAiPrefs, useAiPrefs, type Provider } from "@/lib/client/aiPrefs";
-import { DASHBOARD_FENCE, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
+import { DASHBOARD_FENCE, ENHANCE_PROMPT, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Focus = { portfolioId?: string; symbol?: string; dashboardId?: string };
@@ -262,7 +262,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const fastDeclined = fast && !busy && lastTier !== null && lastTier !== "priority";
   const suggestions = [
     focus.symbol ? `Bull, base and bear case for $${focus.symbol}?` : "How are my portfolios doing today, and what's driving it?",
-    focus.dashboardId ? "Add panels comparing my holdings with the S&P 500 and today's movers." : "Which position is most concentrated or riskiest?",
+    focus.dashboardId ? ENHANCE_PROMPT : "Which position is most concentrated or riskiest?",
     focus.portfolioId ? "What would a 10% market drop do to this portfolio?" : "Build me a dashboard for semiconductor stocks.",
   ];
 
