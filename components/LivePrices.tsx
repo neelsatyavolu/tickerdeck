@@ -108,7 +108,8 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
     load(all);
     const id = setInterval(() => load(all), SNAPSHOT_EVERY);
     const coinId = coins.length > 0 ? setInterval(() => load(coins), CRYPTO_EVERY) : undefined;
-    const indexId = indexes.length > 0 ? setInterval(() => load(indexes), INDEX_EVERY) : undefined;
+    // Index levels only move in the regular session; skipping hidden tabs keeps an always-on display cheap.
+    const indexId = indexes.length > 0 ? setInterval(() => !document.hidden && session() === "regular" && load(indexes), INDEX_EVERY) : undefined;
     return () => {
       cancelled = true;
       clearInterval(id);
