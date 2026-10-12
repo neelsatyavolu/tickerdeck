@@ -6,14 +6,21 @@ export class PriceStream extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.feed = new PriceFanout(async () => {
-      const response = await fetch(`https://ws.finnhub.io?token=${encodeURIComponent(this.env.FINNHUB_API_KEY)}`, {
-        headers: { Upgrade: "websocket" },
-        signal: AbortSignal.timeout(10000),
-      });
-      const upstream = response.webSocket;
-      if (!upstream) throw new Error("Price provider did not upgrade");
-      upstream.accept();
-      return upstream;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(`https://ws.finnhub.io?token=${encodeURIComponent(this.env.FINNHUB_API_KEY)}`, {
+          headers: { Upgrade: "websocket" },
+          signal: controller.signal,
+        });
+        const upstream = response.webSocket;
+        if (!upstream) throw new Error("Price provider did not upgrade");
+        upstream.accept();
+        return upstream;
+      } finally {
+        // workerd retains the fetch signal on upgraded sockets; only time out the handshake.
+        clearTimeout(timeout);
+      }
     });
     for (const socket of ctx.getWebSockets()) {
       this.feed.addClient(socket, socket.deserializeAttachment()?.symbols ?? []);

@@ -64,12 +64,22 @@ try {
   await until(() => connected.every(({ frames }) => frames.some((frame) => frame.type === "trade")));
   assert.deepEqual(connected[0].frames.find((frame) => frame.type === "trade").data, [{ s: "AAPL", p: 123, t: 1 }]);
   assert.deepEqual(connected[1].frames.find((frame) => frame.type === "trade").data, [{ s: "AAPL", p: 123, t: 1 }, { s: "MSFT", p: 456, t: 2 }]);
+  // A handshake timeout must never abort an already-upgraded provider connection.
+  await new Promise((resolve) => setTimeout(resolve, 12000));
+  assert.equal(providerSockets.length, 1, "Provider must remain connected beyond the handshake timeout");
+  assert.equal(providerSockets[0].readyState, 1);
+  providerSockets[0].send(JSON.stringify({ type: "trade", data: [{ s: "AAPL", p: 124, t: 3 }, { s: "MSFT", p: 457, t: 4 }] }));
+  await until(() => connected.every(({ frames }) => frames.filter((frame) => frame.type === "trade").length === 2));
+  for (const { frames } of connected) {
+    assert.deepEqual(frames.filter((frame) => frame.type === "status").map((frame) => frame.connected), [false, true]);
+    assert.equal(frames.filter((frame) => frame.type === "trade")[1].data[0].t, 3);
+  }
   connected[0].socket.close();
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(providerSockets[0].readyState, 1);
   connected[1].socket.close();
   await until(() => providerSockets[0].readyState === 3);
-  console.log("Miniflare: authentication, single upstream, subscription filtering, trade fanout, and last-client cleanup passed");
+  console.log("Miniflare: authentication, single upstream, sustained trades beyond handshake timeout, subscription filtering, and last-client cleanup passed");
 } finally {
   await mf.dispose();
 }
