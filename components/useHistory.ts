@@ -1,34 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, cachedApi } from "@/lib/client/api";
-import { lastDays } from "@/lib/market/performance";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/client/api";
+import { loadHistory, readHistory } from "@/lib/client/history";
 import type { HistoryRange, IntradayRange, PricePoint } from "@/lib/market/types";
 
 type Loaded = { id: string; data: Record<string, PricePoint[]>; failed: string[] };
 const EMPTY: Loaded = { id: "", data: {}, failed: [] };
 
-const RANGE_DAYS: Record<HistoryRange, number> = { "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827, "10y": 3653 };
-const HISTORY_TTL = 10 * 60_000;
 const INTRADAY_EVERY = 60_000;
 
 /**
  * Daily closes for several symbols; symbols that fail are reported, not fatal.
- * Always fetches the 10-year series (cached in the browser) and cuts the range
- * locally, so changing ranges or revisiting a page doesn't hit the network.
+ * Fetches the requested window, reusing wider cached series when available.
+ * Short charts don't download ten years of data for every holding.
  */
 export function useHistories(symbols: string[], range: HistoryRange) {
   const key = [...new Set(symbols)].sort().join(",");
   const id = `${key}|${range}`;
   const [loaded, setLoaded] = useState<Loaded>(EMPTY);
+  const cached = useMemo(() => {
+    if (!key) return null;
+    const entries = key.split(",").map((s) => [s, readHistory(s, range)] as const);
+    if (entries.some(([, points]) => points === undefined)) return null;
+    return { id: `${key}|${range}`, data: Object.fromEntries(entries) as Record<string, PricePoint[]>, failed: [] };
+  }, [key, range]);
 
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
     Promise.all(
       key.split(",").map((s) =>
-        cachedApi<PricePoint[]>(`/api/market/history?symbol=${encodeURIComponent(s)}&range=10y`, HISTORY_TTL).then(
-          (points) => [s, range === "10y" ? points : lastDays(points, RANGE_DAYS[range])] as const,
+        loadHistory(s, range).then(
+          (points) => [s, points] as const,
           () => [s, null] as const,
         ),
       ),
@@ -46,8 +50,8 @@ export function useHistories(symbols: string[], range: HistoryRange) {
   }, [key, range]);
 
   // While a new range loads, keep showing the previous one for the same symbols.
-  const usable = key && loaded.id.startsWith(`${key}|`) ? loaded : EMPTY;
-  return { data: usable.data, failed: usable.failed, loading: Boolean(key) && loaded.id !== id };
+  const usable = cached ?? (key && loaded.id.startsWith(`${key}|`) ? loaded : EMPTY);
+  return { data: usable.data, failed: usable.failed, loading: Boolean(key) && usable.id !== id };
 }
 
 /**

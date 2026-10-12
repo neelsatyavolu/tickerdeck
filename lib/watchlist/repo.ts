@@ -31,12 +31,16 @@ async function resolveList(userId: string, listId?: string | null): Promise<stri
 }
 
 export async function listWatchlists(userId: string): Promise<WatchList[]> {
-  await primaryId(userId);
   const db = sql();
-  const [lists, items] = await Promise.all([
+  const [existingLists, items] = await Promise.all([
     db`select id, name, is_primary from watchlists where user_id = ${userId} order by is_primary desc, position nulls last, created_at`,
     db`select watchlist_id, symbol, name, added_at from watchlist where user_id = ${userId} order by position nulls last, added_at`,
   ]);
+  let lists = existingLists;
+  if (!lists.some((l) => l.is_primary)) {
+    await primaryId(userId);
+    lists = await db`select id, name, is_primary from watchlists where user_id = ${userId} order by is_primary desc, position nulls last, created_at`;
+  }
   return lists.map((l) => ({
     id: l.id as string,
     name: l.name as string,

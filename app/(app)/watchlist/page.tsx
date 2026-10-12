@@ -140,7 +140,7 @@ function WatchlistView() {
   const steps = [
     { label: "Watchlist", done: !loading },
     { label: "Live prices", done: !loading && symbols.every((s) => prices[s] || checked[s]) },
-    { label: "Trends and returns", done: !loading && overviewsReady },
+    { label: "Trends and returns", done: !loading && overviewsReady, blocking: false },
   ];
 
   const onCreateList = async () => {

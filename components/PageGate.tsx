@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type LoadStep = { label: string; done: boolean };
+export type LoadStep = { label: string; done: boolean; blocking?: boolean };
 
 type Props = {
   title: string;
@@ -13,29 +13,22 @@ type Props = {
 };
 
 // Keeps the page laid out (so charts measure their width) but invisible until
-// every step is done, showing a completion bar meanwhile. Once revealed it
+// essential steps are done, showing a completion bar meanwhile. Once revealed it
 // stays revealed; give it a `key` to run again for a different page.
 const HIDDEN: React.CSSProperties = { visibility: "hidden", maxHeight: 0, overflow: "hidden" };
 
 export function PageGate({ title, steps, children, maxWaitMs = 20_000 }: Props) {
   const done = steps.filter((s) => s.done).length;
-  const allDone = done === steps.length;
+  const allDone = steps.every((s) => s.blocking === false || s.done);
   const [revealed, setRevealed] = useState(allDone);
   const [timedOut, setTimedOut] = useState(false);
-  const [mountedAt] = useState(() => Date.now());
+  if (allDone && !revealed) setRevealed(true);
 
   useEffect(() => {
-    if (!allDone) return;
-    // Cached pages finish almost at once: show them immediately. Otherwise let
-    // the bar visibly reach 100% first.
-    const t = setTimeout(() => setRevealed(true), Date.now() - mountedAt < 300 ? 0 : 200);
-    return () => clearTimeout(t);
-  }, [allDone, mountedAt]);
-
-  useEffect(() => {
+    if (revealed) return;
     const t = setTimeout(() => setTimedOut(true), maxWaitMs);
     return () => clearTimeout(t);
-  }, [maxWaitMs]);
+  }, [maxWaitMs, revealed]);
 
   const show = revealed || timedOut;
   const pct = steps.length ? Math.round((done / steps.length) * 100) : 100;

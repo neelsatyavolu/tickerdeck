@@ -54,8 +54,8 @@ export default function PortfolioPage() {
   const steps = [
     { label: "Portfolio", done: !loading },
     { label: "Live prices", done: !loading && symbols.every((s) => prices[s] || checked[s]) },
-    { label: "Price history", done: !loading && (noCharts || !historyLoading) },
-    { label: "Forecast", done: !loading && (noCharts || forecastFor === id || (symbols.every((s) => prices[s] || checked[s]) && exposures.length === 0)) },
+    { label: "Price history", done: !loading && (noCharts || !historyLoading), blocking: false },
+    { label: "Forecast", done: !loading && (noCharts || forecastFor === id || (symbols.every((s) => prices[s] || checked[s]) && exposures.length === 0)), blocking: false },
   ];
 
   if (loading) return <PageGate key={`loading-${id}`} title="portfolio" steps={steps}>{null}</PageGate>;

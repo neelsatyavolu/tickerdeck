@@ -3,8 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import dynamic from "next/dynamic";
 import { ProposalCard } from "./dashboard/ProposalCard";
 import { EFFORT_LABEL } from "@/lib/ai/options";
 import type { Source } from "@/lib/ai/sse";
@@ -122,12 +121,10 @@ function Sources({ items }: { items: Source[] }) {
   );
 }
 
+const MarkdownContent = dynamic(() => import("./AssistantMarkdown"), { ssr: false });
+
 function Markdown({ text }: { text: string }) {
-  return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} unwrapDisallowed components={MD_COMPONENTS}>
-      {text}
-    </ReactMarkdown>
-  );
+  return <MarkdownContent text={text} components={MD_COMPONENTS} />;
 }
 
 type StreamHandlers = {

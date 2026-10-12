@@ -95,10 +95,10 @@ export default function StockPage() {
   const priceOnly = isIndexPage || isCryptoPage;
   const steps = [
     { label: "Company details", done: info !== null },
-    { label: "Price history", done: all.length > 0 || failed.length > 0 },
+    { label: "Price history", done: all.length > 0 || failed.length > 0, blocking: false },
     { label: "Live price", done: price !== null || Boolean(checked[symbol]) },
     // No price at all means no forecast will run; don't wait for one.
-    { label: "Forecast", done: forecastFor === symbol || (Boolean(checked[symbol]) && price === null) },
+    { label: "Forecast", done: forecastFor === symbol || (Boolean(checked[symbol]) && price === null), blocking: false },
   ];
 
   if (error) {

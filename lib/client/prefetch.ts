@@ -1,8 +1,8 @@
 "use client";
 import { cachedApi } from "./api";
+import { loadHistory } from "./history";
 
 const STOCK_TTL = 2 * 60_000;
-const HISTORY_TTL = 10 * 60_000;
 const recent = new Map<string, number>();
 
 /**
@@ -17,5 +17,5 @@ export function prefetchStock(symbol: string): void {
   recent.set(symbol, now);
   const enc = encodeURIComponent(symbol);
   cachedApi(`/api/market/stock/${enc}`, STOCK_TTL).catch(() => {});
-  cachedApi(`/api/market/history?symbol=${enc}&range=10y`, HISTORY_TTL).catch(() => {});
+  loadHistory(symbol, "10y").catch(() => {});
 }

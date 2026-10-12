@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cachedApi } from "@/lib/client/api";
+import { loadOverviews } from "@/lib/client/overviews";
 import type { Overview } from "@/lib/market/overview";
 
 /** Sparkline, returns and 52-week range per symbol (browser-cached for 5 minutes). */
@@ -11,7 +11,7 @@ export function useOverviews(symbols: string[]) {
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
-    cachedApi<Record<string, Overview | null>>(`/api/market/overview?symbols=${encodeURIComponent(key)}`, 5 * 60_000)
+    loadOverviews(key.split(","))
       .then((map) => !cancelled && setData((prev) => ({ key, map: { ...(prev?.map ?? {}), ...map } })))
       .catch(() => !cancelled && setData((prev) => ({ key, map: prev?.map ?? {} })));
     return () => {

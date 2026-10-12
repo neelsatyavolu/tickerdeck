@@ -31,7 +31,7 @@ export function postJson<T>(url: string, payload: unknown): Promise<T> {
   return api<T>(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }
 
-type CacheEntry = { expires: number; value: Promise<unknown> };
+type CacheEntry = { expires: number; value: Promise<unknown>; data?: unknown; pending: boolean };
 const getCache = new Map<string, CacheEntry>();
 
 /**
@@ -42,10 +42,15 @@ const getCache = new Map<string, CacheEntry>();
 export function cachedApi<T>(url: string, ttlMs: number): Promise<T> {
   const now = Date.now();
   const hit = getCache.get(url);
-  if (hit && hit.expires > now) return hit.value as Promise<T>;
+  if (hit && (hit.pending || hit.expires > now)) return hit.value as Promise<T>;
   const value = api<T>(url);
-  getCache.set(url, { expires: now + ttlMs, value });
-  value.catch(() => {
+  const entry: CacheEntry = { expires: 0, value, pending: true };
+  getCache.set(url, entry);
+  value.then((data) => {
+    entry.data = data;
+    entry.pending = false;
+    entry.expires = Date.now() + ttlMs;
+  }, () => {
     if (getCache.get(url)?.value === value) getCache.delete(url);
   });
   return value;
@@ -54,5 +59,11 @@ export function cachedApi<T>(url: string, ttlMs: number): Promise<T> {
 /** Synchronous peek at a cached GET, so a revisited page can render immediately. */
 export function peekCached<T>(url: string): Promise<T> | null {
   const hit = getCache.get(url);
-  return hit && hit.expires > Date.now() ? (hit.value as Promise<T>) : null;
+  return hit && (hit.pending || hit.expires > Date.now()) ? (hit.value as Promise<T>) : null;
+}
+
+/** A resolved, unexpired GET, without waiting for its promise. */
+export function readCached<T>(url: string): T | undefined {
+  const hit = getCache.get(url);
+  return hit && !hit.pending && hit.expires > Date.now() ? hit.data as T : undefined;
 }

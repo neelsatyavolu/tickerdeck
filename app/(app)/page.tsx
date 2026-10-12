@@ -92,7 +92,7 @@ export default function Home() {
   const steps = [
     { label: "Portfolios and watchlist", done: !loadingPortfolios && !loadingWatch },
     { label: "Live prices", done: [...MARKETS, ...everything].every((s) => prices[s] || checked[s]) },
-    { label: "Market trends", done: trendsReady },
+    { label: "Market trends", done: trendsReady, blocking: false },
   ];
 
   return (
