@@ -27,6 +27,7 @@ import { aggregatePositions, portfolioTotals, uniqueSymbols } from "@/lib/portfo
 
 const MARKETS = ["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX"];
 const MAX_HEAT = 40;
+const MAX_HOLDINGS = 8;
 
 function Section({ title, span, action, fill, children }: { title: string; span: 4 | 6 | 8 | 12; action?: React.ReactNode; fill?: boolean; children: React.ReactNode }) {
   return (
@@ -67,7 +68,11 @@ export default function Home() {
     const day = rows.reduce((s, r) => s + r.totals.dayChange, 0);
     const gain = rows.reduce((s, r) => s + r.totals.totalGain, 0);
     const basis = rows.reduce((s, r) => s + (r.p.kind === "paper" && r.p.starting_cash ? r.p.starting_cash : r.totals.cost), 0);
-    return { rows, value, day, gain, basis };
+    // Every holding across those portfolios, biggest dollar move of the day first.
+    const holdings = aggregatePositions(rows.flatMap((r) => r.p.holdings), prices)
+      .filter((h) => h.shares > 0 && h.dayChange !== null)
+      .sort((a, b) => Math.abs(b.dayChange ?? 0) - Math.abs(a.dayChange ?? 0));
+    return { rows, value, day, gain, basis, holdings };
   }, [portfolios, prices]);
 
   // What today's combined holdings were worth over the last 3 months.
@@ -165,6 +170,18 @@ export default function Home() {
                 </Link>
               ))}
             </div>
+            {money.holdings.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div className="label">Holdings today</div>
+                {money.holdings.slice(0, MAX_HOLDINGS).map((h) => (
+                  <Link key={h.symbol} href={`/s/${encodeURIComponent(h.symbol)}`} className="home-row" onMouseEnter={() => prefetchStock(h.symbol)}>
+                    <span style={{ fontWeight: 500 }}>{h.symbol}</span>
+                    <span className={`num ${tone(h.dayChange)}`}>{signedUsd(h.dayChange)}</span>
+                    <span className={`num ${tone(h.dayChangePct)}`}>{pct(h.dayChangePct)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </Section>
         )}
 
