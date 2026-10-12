@@ -8,7 +8,8 @@ import type { PricePoint, QuoteSnapshot } from "./types";
 // and Dow aren't on Finnhub's free plan or Nasdaq's API). Unofficial.
 
 const HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36" };
-const QUOTE_TTL = 30_000;
+// Index levels on CNBC move every 10 to 15 seconds; browsers ask every 5.
+const QUOTE_TTL = 5_000;
 const HISTORY_TTL = 60 * 60_000;
 
 type RawQuote = { symbol: string; last?: string; previous_day_closing?: string; last_time?: string };
