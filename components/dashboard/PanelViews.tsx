@@ -6,6 +6,7 @@ import { Ratings, TargetRange } from "@/components/AnalystPanel";
 import { CompareChart } from "@/components/charts/CompareChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { Sparkline } from "@/components/charts/Sparkline";
+import { useHeight } from "@/components/charts/useHeight";
 import { ForecastPanel } from "@/components/ForecastPanel";
 import { FundamentalsTable } from "@/components/FundamentalsTable";
 import { useLivePrices } from "@/components/LivePrices";
@@ -136,12 +137,25 @@ function PriceView({ panel }: { panel: Panel }) {
   const symbol = panel.symbols[0];
   const { data, failed, loading } = useHistories([symbol], RANGE_TO_HISTORY[panel.range ?? "1Y"]);
   const points = useMemo(() => (data[symbol] ?? []).map((p) => ({ t: p.t, v: p.close, volume: p.volume })), [data, symbol]);
-  if (failed.length) return <div className="notice">No price history for {symbol}.</div>;
-  if (loading && points.length === 0) return <Loading />;
   const compact = panel.width <= 4;
+  // The chart is at least this tall, and grows when its row is stretched to fill the screen.
+  const minHeight = compact ? 150 : 240;
+  const [ref, height] = useHeight<HTMLDivElement>(minHeight);
   // Volume only where it means something: daily data (≤ 2 years) for securities, not indexes.
   const long = panel.range === "5Y" || panel.range === "10Y";
-  return <LineChart points={points} label={`${symbol} price`} height={compact ? 150 : 240} showVolume={!compact && !long && !symbol.startsWith("^")} money={!symbol.startsWith("^")} />;
+  return (
+    <div className="chart-fill" ref={ref} style={{ minHeight }}>
+      <div>
+        {failed.length ? (
+          <div className="notice">No price history for {symbol}.</div>
+        ) : loading && points.length === 0 ? (
+          <Loading />
+        ) : (
+          <LineChart points={points} label={`${symbol} price`} height={height} showVolume={!compact && !long && !symbol.startsWith("^")} money={!symbol.startsWith("^")} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function CompareView({ panel }: { panel: Panel }) {

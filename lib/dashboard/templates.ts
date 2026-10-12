@@ -1,4 +1,4 @@
-import { newPanelId, PANEL_META, panelsSchema, type Panel } from "./schema";
+import { newPanelId, PANEL_META, panelsSchema, type Panel, type PanelWidth } from "./schema";
 
 // Starting layouts. Each is built from what the user has (portfolios,
 // watchlist) and an optional focus symbol, then validated like any dashboard.
@@ -39,6 +39,16 @@ export function wallSymbols({ portfolios, watchlist, watchlists = [], source = "
   return [...new Set(list)];
 }
 
+/**
+ * Charts per row for a wall of n symbols: at most four across, rows as even as
+ * possible, and squarer for small counts (4 is 2 + 2, not one row of four).
+ */
+export function wallRows(n: number): number[] {
+  const rowCount = Math.max(Math.ceil(n / 4), Math.floor(Math.sqrt(n)));
+  const base = Math.floor(n / rowCount);
+  return Array.from({ length: rowCount }, (_, i) => base + (i < n % rowCount ? 1 : 0));
+}
+
 function sourceName({ portfolios, watchlists = [], source = "all" }: TemplateContext, noun: string): string {
   if (source === "watchlist") return `Watchlist ${noun}`;
   if (source.startsWith("list:")) return `${watchlists.find((l) => `list:${l.id}` === source)?.name ?? "List"} ${noun}`;
@@ -71,7 +81,8 @@ export const TEMPLATES: Template[] = [
       const shown = requireSymbols(ctx).slice(0, WALL_MAX_CHARTS);
       const panels: Omit<Panel, "id">[] = [];
       if (shown.length >= 2) panels.push({ type: "heatmap", title: "Today", symbols: shown, width: 12 });
-      for (const s of shown) panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: 3 });
+      const widths = wallRows(shown.length).flatMap((perRow) => Array<PanelWidth>(perRow).fill((12 / perRow) as PanelWidth));
+      shown.forEach((s, i) => panels.push({ type: "price", title: s, symbols: [s], range: "3M", width: widths[i] }));
       return panels;
     },
   },

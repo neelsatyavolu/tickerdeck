@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildTemplate, TEMPLATES } from "./templates";
+import { buildTemplate, TEMPLATES, wallRows } from "./templates";
+import { isTidy } from "./tidy";
 
 const ctx = { portfolios: [{ id: "11111111-1111-4111-8111-111111111111", name: "Core", symbols: ["AAPL", "VTSAX"] }], watchlist: ["NVDA"], symbol: "DHT" };
 
@@ -32,12 +33,23 @@ describe("templates", () => {
 describe("wall layout", () => {
   const many = { portfolios: [{ id: "11111111-1111-4111-8111-111111111111", name: "Core", symbols: ["AAPL", "MSFT"] }, { id: "22222222-2222-4222-8222-222222222222", name: "Play", symbols: ["MSFT", "DHT"] }], watchlist: ["NVDA", "^GSPC", "AAPL"] };
 
-  it("fills the screen with one small chart per symbol, deduplicated, heatmap first", () => {
+  it("fills the screen with one chart per symbol, deduplicated, heatmap first", () => {
     const d = buildTemplate("wall", { ...many, source: "all" });
     expect(d.name).toBe("Everything wall");
     expect(d.panels[0]).toMatchObject({ type: "heatmap", width: 12 });
     expect(d.panels.slice(1).map((p) => p.symbols[0])).toEqual(["AAPL", "MSFT", "DHT", "NVDA", "^GSPC"]);
-    expect(d.panels.slice(1).every((p) => p.type === "price" && p.width === 3)).toBe(true);
+    expect(d.panels.slice(1).every((p) => p.type === "price")).toBe(true);
+    expect(d.panels.slice(1).map((p) => p.width)).toEqual([4, 4, 4, 6, 6]);
+  });
+
+  it("sizes the charts to the symbol count so every row spans the grid", () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 17].map(wallRows)).toEqual([
+      [1], [2], [3], [2, 2], [3, 2], [3, 3], [4, 3], [4, 4], [3, 3, 3], [4, 3, 3], [4, 4, 4, 4], [4, 4, 3, 3, 3],
+    ]);
+    for (let n = 1; n <= 39; n++) {
+      const symbols = Array.from({ length: n }, (_, i) => `S${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
+      expect(isTidy(buildTemplate("wall", { portfolios: [], watchlist: symbols, source: "watchlist" }).panels)).toBe(true);
+    }
   });
 
   it("can use a custom watchlist, and 'all' includes every list", () => {

@@ -21,12 +21,15 @@ export function rows<T extends { width: number }>(panels: T[]): T[][] {
 }
 
 /**
- * Widen panels as little as possible so a row fills all 12 columns. Ties go to
- * widening later panels (the reader's eye lands on the first ones). Returns
- * null when no combination of allowed widths fits.
+ * Widen panels as little as possible so a row fills all 12 columns. Panels
+ * that start equal stay equal when they can. Otherwise ties go to widening
+ * later panels (the reader's eye lands on the first ones). Returns null when
+ * no combination of allowed widths fits.
  */
 export function fillRow(widths: number[]): PanelWidth[] | null {
   if (widths.reduce((a, b) => a + b, 0) === COLUMNS) return widths as PanelWidth[];
+  const even = PANEL_WIDTHS.find((w) => w * widths.length === COLUMNS);
+  if (even && widths.every((w) => w === widths[0] && w <= even)) return widths.map(() => even);
   let best: { widths: PanelWidth[]; cost: number; lateBias: number } | null = null;
   const choose = (i: number, acc: PanelWidth[], sum: number) => {
     if (sum > COLUMNS) return;
@@ -49,6 +52,14 @@ export function tidyLayout(panels: Panel[]): Panel[] {
     const widths = fillRow(row.map((p) => p.width));
     return widths ? row.map((p, i) => ({ ...p, width: widths[i] })) : row;
   });
+}
+
+/**
+ * grid-template-rows for the dashboard grid: rows holding a price chart share
+ * whatever height the screen has left, the rest keep their natural height.
+ */
+export function rowTemplate(panels: Panel[]): string {
+  return rows(panels).map((row) => (row.some((p) => p.type === "price") ? "minmax(min-content, 1fr)" : "auto")).join(" ");
 }
 
 export function isTidy(panels: Panel[]): boolean {

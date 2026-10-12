@@ -6,13 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { PanelEditor } from "@/components/dashboard/PanelEditor";
 import { PanelView } from "@/components/dashboard/PanelViews";
+import { useFillScreen } from "@/components/dashboard/useFillScreen";
 import { useDashboards } from "@/components/Dashboards";
 import { useLivePrices } from "@/components/LivePrices";
 import { PageGate } from "@/components/PageGate";
 import { ErrorText } from "@/components/ui";
 import { useWakeLock, type WakeState } from "@/components/useWakeLock";
 import { PANEL_META, PANEL_WIDTHS, type Panel } from "@/lib/dashboard/schema";
-import { isTidy, tidyLayout } from "@/lib/dashboard/tidy";
+import { isTidy, rowTemplate, tidyLayout } from "@/lib/dashboard/tidy";
 import { moveItem } from "@/lib/reorder";
 
 const WAKE_NOTE: Record<WakeState, string> = {
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [dropOn, setDropOn] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wall = useRef<HTMLDivElement>(null);
+  const grid = useFillScreen<HTMLDivElement>();
   // Display mode lives in the URL, so a bookmark or home-screen icon on a
   // spare tablet opens straight into it.
   // It waits for panels and steps aside while editing, so it never covers the editor.
@@ -192,7 +194,7 @@ export default function DashboardPage() {
             <button className="btn-text" onClick={exitDisplay}>Exit display mode</button>
           </div>
         )}
-        <div className="dash-grid">
+        <div ref={grid} className="dash-grid" style={editingPanel === null ? ({ "--rows": rowTemplate(panels) } as React.CSSProperties) : undefined}>
           {panels.map((p, i) =>
             editingPanel === p.id ? (
               <div key={p.id} className="dash-panel span-12">
