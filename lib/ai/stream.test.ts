@@ -64,6 +64,26 @@ describe("streamChat", () => {
     expect(JSON.parse(init.body).input).toEqual([{ role: "system", content: "sys" }, { role: "user", content: "hi" }]);
   });
 
+  it("sends a user's screenshots to either provider as image parts", async () => {
+    const image = "data:image/png;base64,iVBORw0KGgo=";
+    const messages = [
+      { role: "user" as const, content: "what is this?", images: [image] },
+      { role: "assistant" as const, content: "A chart." },
+      { role: "user" as const, content: "", images: [image] },
+    ];
+    const parts = [{ type: "input_image", image_url: image }];
+    for (const provider of ["codex", "grok"] as const) {
+      const fetchMock = vi.fn().mockResolvedValue(sseResponse(["data: [DONE]\n"]));
+      vi.stubGlobal("fetch", fetchMock);
+      await collectText(streamChat({ provider, tokens, model: "m", system: "sys", messages }));
+      const input = JSON.parse(fetchMock.mock.calls[0][1].body).input.filter((m: { role: string }) => m.role === "user");
+      expect(input).toEqual([
+        { role: "user", content: [{ type: "input_text", text: "what is this?" }, ...parts] },
+        { role: "user", content: parts },
+      ]);
+    }
+  });
+
   it("turns an expired token into a reconnect message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("nope", { status: 401 })));
     const out = await collectText(streamChat({ provider: "grok", tokens, model: "grok-4.7", system: "", messages: [{ role: "user", content: "x" }] }));

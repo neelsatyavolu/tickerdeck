@@ -4,6 +4,7 @@ import { HORIZONS } from "./forecast/montecarlo";
 import { isCrypto } from "./market/crypto";
 import { isIndex } from "./market/indexes";
 import { EFFORTS } from "./ai/options";
+import { IMAGE_DATA_URL, MAX_IMAGE_CHARS, MAX_IMAGES_PER_MESSAGE } from "./ai/images";
 
 /** Something you can own: a US stock, ETF or mutual fund. */
 export const tickerSchema = z
@@ -58,6 +59,11 @@ export const horizonSchema = z.enum(Object.keys(HORIZONS) as [keyof typeof HORIZ
 export const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().max(20_000),
+  /** Screenshots attached to a user message, as data URLs. */
+  images: z
+    .array(z.string().max(MAX_IMAGE_CHARS, "That image is too large.").regex(IMAGE_DATA_URL, "Attachments must be PNG, JPEG, WebP or GIF images."))
+    .max(MAX_IMAGES_PER_MESSAGE)
+    .optional(),
 });
 
 export const chatRequestSchema = z.object({

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ProposalCard } from "./dashboard/ProposalCard";
+import { fitImages, MAX_IMAGES_PER_MESSAGE } from "@/lib/ai/images";
 import { EFFORT_LABEL } from "@/lib/ai/options";
 import type { Source } from "@/lib/ai/sse";
 import { effortOf, updateAiPrefs, useAiPrefs, type Provider } from "@/lib/client/aiPrefs";
+import { toDataUrl } from "@/lib/client/screenshot";
 import { DASHBOARD_FENCE, ENHANCE_PROMPT, extractProposals, PANEL_FENCE } from "@/lib/dashboard/aiPanels";
 
-type Msg = { role: "user" | "assistant"; content: string; sources?: Source[] };
+type Msg = { role: "user" | "assistant"; content: string; sources?: Source[]; images?: string[] };
 type Focus = { portfolioId?: string; symbol?: string; dashboardId?: string };
 type Status = Record<Provider, boolean>;
 type Models = Record<Provider, { id: string; label: string }[]>;
@@ -20,7 +22,7 @@ const PROVIDER_LABEL: Record<Provider, string> = { codex: "ChatGPT", grok: "Grok
 type Ctx = {
   open: boolean;
   setOpen: (v: boolean) => void;
-  ask: (text: string, focus?: Focus) => void;
+  ask: (text: string, focus?: Focus, images?: string[]) => void;
   status: Status | null;
   refreshStatus: () => Promise<void>;
 };
@@ -221,7 +223,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         setMessages((prev) => (abort.current === ctrl && prev.length ? [...prev.slice(0, -1), change(prev[prev.length - 1])] : prev));
       try {
         await streamAnswer(
-          { provider, model: modelPref[provider], messages: history.map(({ role, content }) => ({ role, content })), focus, effort, fast },
+          {
+            provider,
+            model: modelPref[provider],
+            messages: fitImages(history).map(({ role, content, images }) => (images?.length ? { role, content, images } : { role, content })),
+            focus,
+            effort,
+            fast,
+          },
           ctrl.signal,
           {
             onText: (t) => {
@@ -250,11 +259,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   );
 
   const ask = useCallback(
-    (text: string, focus?: Focus) => {
+    (text: string, focus?: Focus, images: string[] = []) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      if (!trimmed && images.length === 0) return;
       setOpen(true);
-      const history: Msg[] = [...messages, { role: "user", content: trimmed }];
+      const history: Msg[] = [...messages, { role: "user", content: trimmed, ...(images.length ? { images } : {}) }];
       send(history.slice(-40), focus ?? focusFromPath(pathname));
     },
     [messages, pathname, send],
@@ -370,7 +379,16 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           ) : (
             messages.map((m, i) =>
               m.role === "user" ? (
-                <div key={i} className="msg-user">{m.content}</div>
+                <div key={i} className="msg-user">
+                  {m.images && (
+                    <div className="assist-shots">
+                      {/* The user's own screenshots, held in the page as data URLs. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {m.images.map((src, n) => <img key={n} src={src} alt={`Screenshot ${n + 1}`} />)}
+                    </div>
+                  )}
+                  {m.content}
+                </div>
               ) : (
                 <div key={i} className="prose">
                   {m.content ? <Reply text={m.content} dashboardId={focus.dashboardId} /> : !activity && <span className="caret" aria-label="Thinking" />}
@@ -389,27 +407,74 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </div>
-        {connected.length > 0 && <Composer busy={busy} onSend={(t) => ask(t)} onStop={stop} open={open} />}
+        {connected.length > 0 && <Composer busy={busy} onSend={(t, images) => ask(t, undefined, images)} onStop={stop} open={open} />}
       </aside>
     </AssistantCtx.Provider>
   );
 }
 
-function Composer({ busy, onSend, onStop, open }: { busy: boolean; onSend: (t: string) => void; onStop: () => void; open: boolean }) {
+function Composer({ busy, onSend, onStop, open }: { busy: boolean; onSend: (t: string, images: string[]) => void; onStop: () => void; open: boolean }) {
   const [text, setText] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open) input.current?.focus();
   }, [open]);
+  const empty = !text.trim() && images.length === 0;
   const submit = () => {
-    if (!text.trim() || busy) return;
-    onSend(text);
+    if (empty || busy) return;
+    onSend(text, images);
     setText("");
+    setImages([]);
+    setProblem(null);
+  };
+  /** Attaches the images among pasted, dropped or picked files. Returns whether there were any. */
+  const attach = (files: FileList | null): boolean => {
+    const picked = [...(files ?? [])].filter((f) => f.type.startsWith("image/"));
+    if (picked.length === 0) return false;
+    setProblem(null);
+    Promise.all(picked.map(toDataUrl))
+      .then((urls) => {
+        setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES_PER_MESSAGE));
+        if (images.length + urls.length > MAX_IMAGES_PER_MESSAGE) setProblem(`Up to ${MAX_IMAGES_PER_MESSAGE} images per message.`);
+      })
+      .catch((err) => setProblem(err instanceof Error && err.message.startsWith("That image") ? err.message : "Could not read that image."));
+    return true;
   };
   return (
-    <form className="assist-foot" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <input ref={input} className="input" value={text} placeholder="Ask anything about your stocks…" onChange={(e) => setText(e.target.value)} aria-label="Message" title="Not financial advice. Answers use your subscription." />
-      {busy ? <button type="button" className="btn btn-ghost" onClick={onStop}>Stop</button> : <button className="btn btn-primary" disabled={!text.trim()}>Send</button>}
+    <form
+      className="assist-foot"
+      onSubmit={(e) => { e.preventDefault(); submit(); }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => { e.preventDefault(); attach(e.dataTransfer.files); }}
+    >
+      {(images.length > 0 || problem) && (
+        <div className="assist-shots">
+          {images.map((src, i) => (
+            <span key={i} className="assist-shot">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Attached screenshot ${i + 1}`} />
+              <button type="button" onClick={() => setImages((prev) => prev.filter((_, n) => n !== i))} aria-label={`Remove screenshot ${i + 1}`}>×</button>
+            </span>
+          ))}
+          {problem && <span className="error" role="alert">{problem}</span>}
+        </div>
+      )}
+      <input ref={picker} type="file" accept="image/*" multiple hidden onChange={(e) => { attach(e.target.files); e.target.value = ""; }} />
+      <button type="button" className="btn btn-ghost" onClick={() => picker.current?.click()} aria-label="Attach a screenshot" title="Attach a screenshot, or paste or drop one here">+</button>
+      <input
+        ref={input}
+        className="input"
+        value={text}
+        placeholder="Ask anything, or paste a screenshot…"
+        onChange={(e) => setText(e.target.value)}
+        onPaste={(e) => { if (attach(e.clipboardData.files)) e.preventDefault(); }}
+        aria-label="Message"
+        title="Not financial advice. Answers use your subscription."
+      />
+      {busy ? <button type="button" className="btn btn-ghost" onClick={onStop}>Stop</button> : <button className="btn btn-primary" disabled={empty}>Send</button>}
     </form>
   );
 }

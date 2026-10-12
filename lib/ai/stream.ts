@@ -30,7 +30,8 @@ const HOSTED_SEARCH: Record<Provider, object[]> = {
   grok: [{ type: "web_search" }, { type: "x_search" }],
 };
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+/** `images` are screenshots attached to a user message, as data URLs. */
+export type ChatMessage = { role: "user" | "assistant"; content: string; images?: string[] };
 
 type StreamParams = {
   provider: Provider;
@@ -61,12 +62,20 @@ type Io = {
   reading: (reader: ReadableStreamDefaultReader<Uint8Array>) => void;
 };
 
+/** A user message with screenshots: its text (if any), then each image. */
+function withImages(m: ChatMessage): object {
+  const images = (m.images ?? []).map((image_url) => ({ type: "input_image", image_url }));
+  return { role: m.role, content: [...(m.content ? [{ type: "input_text", text: m.content }] : []), ...images] };
+}
+
 function firstInput({ provider, system, messages }: StreamParams): object[] {
-  if (provider === "grok") return [{ role: "system", content: system }, ...messages];
-  return messages.map((m) => ({
-    role: m.role,
-    content: [{ type: m.role === "assistant" ? "output_text" : "input_text", text: m.content }],
-  }));
+  const seen = (m: ChatMessage) => m.role === "user" && Boolean(m.images?.length);
+  if (provider === "grok") {
+    return [{ role: "system", content: system }, ...messages.map((m) => (seen(m) ? withImages(m) : { role: m.role, content: m.content }))];
+  }
+  return messages.map((m) =>
+    seen(m) ? withImages(m) : { role: m.role, content: [{ type: m.role === "assistant" ? "output_text" : "input_text", text: m.content }] },
+  );
 }
 
 function sharedBody({ provider, model }: StreamParams, attempt: Attempt, round: Round) {

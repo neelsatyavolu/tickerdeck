@@ -215,6 +215,14 @@ table.data tr.lot td { color: var(--fg-3); font-size: 13px; }
 .assist-suggestion:hover { color: var(--fg); }
 .assist-foot { border-top: 1px solid var(--border); padding: 12px; display: flex; gap: 8px; align-items: center; }
 .assist-foot .input { flex: 1; min-width: 0; padding: 10px 12px; }
+/* Screenshots: waiting in the composer, and in a sent message */
+.assist-foot { flex-wrap: wrap; }
+.assist-shots { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-basis: 100%; }
+.assist-shots img { display: block; height: 56px; max-width: 120px; object-fit: cover; border: 1px solid var(--border-strong); }
+.assist-shot { position: relative; display: block; }
+.assist-shot button { position: absolute; top: 0; right: 0; width: 18px; height: 18px; padding: 0; border: none; background: var(--fg); color: var(--bg); font-size: 13px; line-height: 1; cursor: pointer; }
+.msg-user .assist-shots { margin-bottom: 8px; }
+.msg-user .assist-shots img { height: auto; max-height: 180px; max-width: 100%; object-fit: contain; }
 .assist-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 39; }
 @media (max-width: 760px) { .assist, .assist[data-expanded="true"] { right: 0; bottom: 0; width: 100vw; height: 85vh; border-left: none; border-right: none; border-bottom: none; } .assist-launcher { right: 16px; bottom: 16px; } }
 
@@ -299,6 +307,12 @@ table.data.compact th, table.data.compact td { padding: 6px 8px; font-size: 13px
 .dash-panel-head .label { font-size: 11px; color: var(--fg-3); }
 .dash-panel .tiles-grid { border: none; gap: 4px 0; }
 .dash-panel .tiles-grid > .tile { border: none; padding: 4px 12px 4px 0; }
+/* Quote tiles fill their panel: a few symbols share its width and height, in type sized to the tile */
+.dash-panel > .tiles-grid { flex: 1; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); grid-auto-rows: 1fr; }
+.dash-panel .tiles-grid > .tile { container-type: inline-size; display: flex; flex-direction: column; justify-content: center; }
+.dash-panel .tiles-grid .tile .label { font-size: clamp(12px, 4cqi, 16px); }
+.dash-panel .tiles-grid .tile .value { font-size: clamp(17px, 11cqi, 56px); line-height: 1.15; }
+.dash-panel .tiles-grid .tile .sub { font-size: clamp(12px, 5cqi, 20px); }
 .dash-panel .table-wrap { border-top: none; }
 
 /* Watch button with a lists menu */
