@@ -84,8 +84,31 @@ import { latestQuote, parseLookup } from "./nasdaq";
 
 describe("latestQuote", () => {
   it("uses the last two closes", () => {
-    expect(latestQuote("VTSAX", [{ t: 1, close: 185.53 }, { t: 2, close: 184.77 }])).toEqual({ symbol: "VTSAX", price: 184.77, prevClose: 185.53, time: 2 });
+    expect(latestQuote("VTSAX", [{ t: 1, close: 185.53 }, { t: 2, close: 184.77 }], new Date("2026-10-10T17:00:00Z"))).toEqual({ symbol: "VTSAX", price: 184.77, prevClose: 185.53, time: 2 });
     expect(latestQuote("X", [{ t: 1, close: 1 }])).toBeNull();
+  });
+
+  // Daily points are stamped 20:00 UTC on their trading day. New York is UTC-4 in October.
+  const thursday = { t: Date.UTC(2026, 9, 8, 20), close: 184.77 };
+  const friday = { t: Date.UTC(2026, 9, 9, 20), close: 185.93 };
+  const monday = { t: Date.UTC(2026, 9, 12, 20), close: 186.5 };
+
+  it("shows no move once a new trading day has opened and its close is not in yet", () => {
+    const mondayAfternoon = new Date("2026-10-12T17:00:00Z"); // Mon 1:00 PM ET
+    expect(latestQuote("VTSAX", [thursday, friday], mondayAfternoon)).toEqual({ symbol: "VTSAX", price: 185.93, prevClose: 185.93, time: friday.t });
+    const mondayEvening = new Date("2026-10-12T21:30:00Z"); // Mon 5:30 PM ET, before the NAV posts
+    expect(latestQuote("VTSAX", [thursday, friday], mondayEvening)?.prevClose).toBe(185.93);
+  });
+
+  it("shows the move once that day has its close", () => {
+    const mondayNight = new Date("2026-10-12T23:00:00Z"); // Mon 7:00 PM ET
+    expect(latestQuote("VTSAX", [thursday, friday, monday], mondayNight)).toEqual({ symbol: "VTSAX", price: 186.5, prevClose: 185.93, time: monday.t });
+  });
+
+  it("keeps the last move before the open and at weekends", () => {
+    expect(latestQuote("VTSAX", [thursday, friday], new Date("2026-10-12T13:00:00Z"))?.prevClose).toBe(184.77); // Mon 9:00 AM ET
+    expect(latestQuote("VTSAX", [thursday, friday], new Date("2026-10-10T17:00:00Z"))?.prevClose).toBe(184.77); // Saturday
+    expect(latestQuote("VTSAX", [thursday, friday], new Date("2026-10-09T21:00:00Z"))?.prevClose).toBe(184.77); // Fri 5 PM ET, NAV posted
   });
 });
 

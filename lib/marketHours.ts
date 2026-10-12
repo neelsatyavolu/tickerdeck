@@ -12,6 +12,17 @@ function newYorkClock(now: Date): { day: number; minutes: number } {
   return { day, minutes: Number(get("hour")) * 60 + Number(get("minute")) };
 }
 
+/** The calendar date in New York, as YYYY-MM-DD. */
+export function newYorkDate(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(now);
+}
+
+/** True from the 9:30 open onward on a weekday: the day that now has a session of its own. */
+export function openedToday(now = new Date()): boolean {
+  const { day, minutes } = newYorkClock(now);
+  return day >= 1 && day <= 5 && minutes >= OPEN_MIN;
+}
+
 export type MarketStatus = { open: boolean; label: string };
 export type Session = "regular" | "pre" | "after" | "closed";
 

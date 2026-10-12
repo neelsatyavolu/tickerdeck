@@ -1,6 +1,7 @@
 import "server-only";
 import { memo, peek, remember } from "./cache";
 import { fetchJson, UpstreamError } from "./http";
+import { newYorkDate, openedToday } from "@/lib/marketHours";
 import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
 // Nasdaq's public quote API (the one nasdaq.com uses). Unofficial like Yahoo's,
@@ -230,10 +231,13 @@ export function extended(symbol: string): Promise<ExtendedQuote | null> {
 }
 
 /** Latest close and the one before it. Mutual funds price once a day, so this is their quote. */
-export function latestQuote(symbol: string, points: PricePoint[]): QuoteSnapshot | null {
+export function latestQuote(symbol: string, points: PricePoint[], now = new Date()): QuoteSnapshot | null {
   if (points.length < 2) return null;
   const last = points[points.length - 1];
-  return { symbol, price: last.close, prevClose: points[points.length - 2].close, time: last.t };
+  // A fund's price for today posts in the evening. Until then the last close is
+  // the previous close, so the day shows no move rather than repeating the last one.
+  const awaitingClose = openedToday(now) && newYorkDate(new Date(last.t)) !== newYorkDate(now);
+  return { symbol, price: last.close, prevClose: awaitingClose ? last.close : points[points.length - 2].close, time: last.t };
 }
 
 /** Quote from recent daily closes, for symbols Finnhub's free plan won't price (mutual funds). */
