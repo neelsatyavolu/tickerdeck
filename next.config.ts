@@ -7,11 +7,11 @@ const dev = process.env.NODE_ENV !== "production";
 // locked to this origin, plus Finnhub's trade socket and https news images.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://analytics.n3el.dev${dev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https: data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' wss://ws.finnhub.io${dev ? " ws:" : ""}`,
+  `connect-src 'self' wss://ws.finnhub.io https://analytics.n3el.dev${dev ? " ws:" : ""}`,
   "frame-src 'none'",
   "frame-ancestors 'none'",
   "object-src 'none'",

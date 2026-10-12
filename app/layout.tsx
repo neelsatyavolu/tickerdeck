@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import Script from "next/script";
 import { ThemeSync } from "@/components/Theme";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <ThemeSync />
         {children}
+        <Script src="https://analytics.n3el.dev/p.js" strategy="afterInteractive" />
       </body>
     </html>
   );
