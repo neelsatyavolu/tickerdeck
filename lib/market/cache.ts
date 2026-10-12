@@ -10,6 +10,9 @@ import { getCache } from "@vercel/functions";
 type Entry = { expires: number; value: Promise<unknown> };
 
 const MAX_ENTRIES = 2000;
+// The Runtime Cache served a 5-second index quote for about 40 seconds on
+// 2026-10-12, so values that must be fresher than this stay in memory only.
+const SHARED_MIN_TTL = 10_000;
 const store = new Map<string, Entry>();
 
 let shared: ReturnType<typeof getCache> | null | undefined;
@@ -25,7 +28,7 @@ function sharedCache() {
 }
 
 async function loadThrough<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const cache = sharedCache();
+  const cache = ttlMs >= SHARED_MIN_TTL ? sharedCache() : null;
   if (cache) {
     try {
       const hit = await cache.get(key);
