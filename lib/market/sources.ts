@@ -8,6 +8,7 @@ import * as nasdaq from "./nasdaq";
 import * as yahoo from "./yahoo";
 import { weeklyBefore } from "./downsample";
 import { UpstreamError } from "./http";
+import { newYorkDate, openedToday } from "@/lib/marketHours";
 import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMatch, TargetPoint } from "./types";
 
 // Which provider answers what (market indexes like ^GSPC always go to CNBC,
@@ -19,10 +20,20 @@ import type { AnalystTargets, HistoryRange, PricePoint, QuoteSnapshot, SymbolMat
 
 const FALLBACK_CONCURRENCY = 4;
 
+/**
+ * Once a new trading day has opened, a quote still dated to an earlier day has
+ * not moved today: its price is the previous close. Mutual funds are the usual
+ * case (today's NAV posts in the evening), so Friday's gain isn't shown as Monday's.
+ */
+export function settleDay(q: QuoteSnapshot, now = new Date()): QuoteSnapshot {
+  return openedToday(now) && newYorkDate(new Date(q.time)) !== newYorkDate(now) ? { ...q, prevClose: q.price } : q;
+}
+
 export async function quote(symbol: string): Promise<QuoteSnapshot | null> {
   if (isIndex(symbol)) return (await cnbc.quotes([symbol]).catch(() => []))[0] ?? null;
   if (isCrypto(symbol)) return (await coinbase.quotes([symbol]))[0] ?? null;
-  return (await finnhub.quote(symbol).catch(() => null)) ?? (await nasdaq.quote(symbol).catch(() => null));
+  const q = (await finnhub.quote(symbol).catch(() => null)) ?? (await nasdaq.quote(symbol).catch(() => null));
+  return q && settleDay(q);
 }
 
 export async function quotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot[]; failed: string[] }> {
@@ -52,7 +63,7 @@ async function tickerQuotes(symbols: string[]): Promise<{ quotes: QuoteSnapshot[
   }
   await Promise.all(Array.from({ length: Math.min(FALLBACK_CONCURRENCY, retry.length) }, worker));
   const got = new Set(recovered.map((q) => q.symbol));
-  return { quotes: [...first.quotes, ...recovered], failed: retry.filter((s) => !got.has(s)) };
+  return { quotes: [...first.quotes, ...recovered].map((q) => settleDay(q)), failed: retry.filter((s) => !got.has(s)) };
 }
 
 export async function search(query: string): Promise<SymbolMatch[]> {
