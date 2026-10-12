@@ -66,7 +66,10 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
     overlayPath = steps.join("");
   }
 
-  const maxVol = hasVolume ? Math.max(...points.map((p) => p.volume ?? 0)) : 0;
+  // The opening and closing auctions dwarf every other minute, so minute bars scale to the 98th percentile.
+  const volumes = hasVolume ? points.map((p) => p.volume ?? 0).sort((a, b) => a - b) : [];
+  const maxVol = hasVolume ? (intraday && volumes[Math.floor(volumes.length * 0.98)]) || volumes[volumes.length - 1] : 0;
+  const volH = (v: number) => Math.min(1, v / maxVol) * VOLUME_H;
   const barW = Math.max(1, (width - PAD.left - PAD.right) / points.length - 1);
   const first = points[0];
   const last = points[points.length - 1];
@@ -97,7 +100,7 @@ export function LineChart({ points, height = 260, label, overlay, showVolume, mo
             <g aria-hidden="true">
               {points.map((p, i) =>
                 p.volume ? (
-                  <rect key={p.t} x={xs[i] - barW / 2} width={barW} y={height - PAD.bottom - (p.volume / maxVol) * VOLUME_H} height={(p.volume / maxVol) * VOLUME_H} fill={hover === i ? "var(--fg-2)" : "var(--fg-4)"} />
+                  <rect key={p.t} x={xs[i] - barW / 2} width={barW} y={height - PAD.bottom - volH(p.volume)} height={volH(p.volume)} fill={hover === i ? "var(--fg-2)" : "var(--fg-4)"} />
                 ) : null,
               )}
             </g>
