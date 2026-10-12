@@ -7,7 +7,7 @@ import type { QuoteSnapshot } from "@/lib/market/types";
 import { session } from "@/lib/marketHours";
 
 // Live prices: a REST snapshot for previous close and a starting price, then
-// Finnhub's trade WebSocket on top. Snapshots refresh every minute as a
+// shared trade WebSocket on top. Snapshots refresh every minute as a
 // fallback for when the socket is down or the market is closed. Crypto isn't
 // on the stream, so its snapshots refresh every 15 seconds instead.
 
@@ -111,27 +111,27 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
     };
   }, [watchedKey]);
 
-  // One WebSocket for the whole app, reconnecting with backoff.
+  // Browsers share one backend Finnhub connection, reconnecting with backoff.
   useEffect(() => {
     let closed = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const connect = async () => {
-      let key: string;
+      let url: string;
       try {
-        key = (await api<{ key: string }>("/api/market/key")).key;
+        url = (await api<{ url: string }>("/api/market/stream")).url;
       } catch (err) {
-        console.warn("[prices] no stream key", err);
+        if (closed) return;
+        console.warn("[prices] stream unavailable", err);
         timer = setTimeout(connect, 30_000);
         return;
       }
       if (closed) return;
-      const socket = new WebSocket(`wss://ws.finnhub.io?token=${encodeURIComponent(key)}`);
+      const socket = new WebSocket(url);
       ws.current = socket;
       socket.onopen = () => {
-        retry = 0;
-        setSocketOpen(true);
+        if (closed) return;
         subscribed.current.clear();
         for (const s of [...counts.current.keys()].filter(streamable)) {
           socket.send(JSON.stringify({ type: "subscribe", symbol: s }));
@@ -140,8 +140,20 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
       };
       socket.onmessage = (ev) => {
         try {
-          const msg = JSON.parse(String(ev.data)) as { type?: string; data?: { s: string; p: number; t: number }[] };
+          if (closed) return;
+          const msg = JSON.parse(String(ev.data)) as { type?: string; connected?: boolean; message?: string; data?: { s: string; p: number; t: number }[] };
+          if (msg.type === "status") {
+            setSocketOpen(msg.connected === true);
+            return;
+          }
+          if (msg.type === "error") {
+            console.warn("[prices] stream error", msg.message);
+            return;
+          }
           if (msg.type !== "trade" || !msg.data) return;
+          // Opening a socket alone doesn't prove the upstream is healthy.
+          retry = 0;
+          setSocketOpen(true);
           for (const tr of msg.data) {
             const prev = pending.current.get(tr.s);
             if (!prev || tr.t >= prev.t) pending.current.set(tr.s, { p: tr.p, t: tr.t });
@@ -151,9 +163,9 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         }
       };
       socket.onclose = () => {
+        if (closed || ws.current !== socket) return;
         setSocketOpen(false);
         ws.current = null;
-        if (closed) return;
         const delay = Math.min(30_000, 1000 * 2 ** retry++);
         timer = setTimeout(connect, delay);
       };

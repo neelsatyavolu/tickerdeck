@@ -1,0 +1,11 @@
+{
+  "name": "tickerquill-prices",
+  "account_id": "5eac7df5e71a989ae9dbf9c8e9761c24",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-12",
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "durable_objects": {
+    "bindings": [{ "name": "PRICE_STREAM", "class_name": "PriceStream" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PriceStream"] }]
+}

@@ -45,15 +45,20 @@ Once `send.magic_link` is selected, Neon stops sending every email that carries 
 | Forecast math (pure, tested) | `lib/forecast/montecarlo.ts`: resamples whole historical days, so the way assets move together is kept. Historical drift is replaced by an assumed 7%/yr. |
 | Portfolio math | `lib/portfolio/math.ts`: merges lots, then computes gain/loss, weights, and paper cash. |
 | Data access | `lib/portfolio/repo.ts`: server-only SQL, with every statement filtered by `user_id`. The browser calls `/api/portfolios` and `/api/holdings`. |
-| Live prices | `components/LivePrices.tsx`: a REST snapshot, then the Finnhub WebSocket. The socket key is only served to signed-in users. |
+| Live prices | `components/LivePrices.tsx`: a REST snapshot, then the shared stream in `realtime/`. One Cloudflare Durable Object owns the Finnhub connection for all browsers. Signed-in users get a one-minute connection ticket; the provider key stays on the backend. |
 | Forgot password | `app/login/forgot` asks Neon Auth for a reset link; `app/login/reset` sets the new password. Neon calls `app/api/webhooks/neon-auth` (`lib/auth/webhook.ts`), which checks Neon's Ed25519 signature and sends the email (`lib/mail/`). |
 | AI sign-in | `app/api/ai/[provider]/*`: paste-the-callback OAuth via `shared-ai-auth`. Tokens are kept in chunked httpOnly cookies, never in the database. |
 | AI chat | `app/api/ai/chat`: gathers portfolios, quotes, analyst data, news, and forecasts into the system prompt (`lib/ai/context.ts`), then streams NDJSON back. Read-only: the assistant cannot change data. |
+
+### Shared price stream
+
+Deploy `realtime/wrangler.jsonc` with Wrangler. Set its `FINNHUB_API_KEY` and `PRICE_STREAM_SECRET` secrets, then set the same `PRICE_STREAM_SECRET` and the deployed `https://<worker>/stream` as `PRICE_STREAM_URL` on Vercel. Redeploy the app after changing the URL so its socket origin is allowed by the content security policy. The relay connects only while stocks are being watched, combines overlapping subscriptions, and reconnects with backoff. Finnhub's 50-symbol limit applies to the combined set; indexes and crypto continue using snapshots.
 
 ## Tests
 
 ```sh
 pnpm test        # unit tests (vitest)
+pnpm exec vitest run --config realtime/vitest.config.mjs # shared stream
 pnpm typecheck
 pnpm test:e2e    # Playwright; needs the Neon + Finnhub env vars locally
 ```
