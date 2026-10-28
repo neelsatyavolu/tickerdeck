@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
+import { applySnapshot, applyTrade, type LivePrice } from "@/lib/livePrice";
 import { isCrypto } from "@/lib/market/crypto";
 import type { QuoteSnapshot } from "@/lib/market/types";
 import { session } from "@/lib/marketHours";
@@ -12,8 +13,7 @@ import { session } from "@/lib/marketHours";
 // on the stream, so its snapshots refresh every 15 seconds instead, and
 // indexes (no free feed streams the Dow or S&P) every 5.
 
-/** `price` is the regular session; trades before 9:30 or after 4:00 ET go to `ext`. */
-export type LivePrice = { price: number; prevClose: number; time: number; fromTrade: boolean; ext?: { price: number; time: number } };
+export type { LivePrice };
 export type FeedStatus = "connecting" | "live" | "quiet" | "offline";
 
 type Ctx = {
@@ -93,11 +93,7 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
         setChecked((prev) => ({ ...prev, ...Object.fromEntries(symbols.map((s) => [s, true as const])) }));
         setPrices((prev) => {
           const next = { ...prev };
-          for (const q of quotes) {
-            const cur = prev[q.symbol];
-            // Keep a fresher trade price; always take the snapshot's previous close.
-            next[q.symbol] = cur?.fromTrade && cur.time > q.time ? { ...cur, prevClose: q.prevClose } : { price: q.price, prevClose: q.prevClose, time: q.time, fromTrade: false, ext: cur?.ext };
-          }
+          for (const q of quotes) next[q.symbol] = applySnapshot(prev[q.symbol], q);
           return next;
         });
       } catch (err) {
@@ -216,11 +212,8 @@ export function LivePricesProvider({ children }: { children: React.ReactNode }) 
       setPrices((prev) => {
         const next = { ...prev };
         for (const [s, { p, t }] of batch) {
-          const cur = prev[s];
-          if (session(new Date(t)) !== "regular") {
-            // Extended-hours prints don't move the day's change; they're shown beside it.
-            if (!cur?.ext || t >= cur.ext.time) next[s] = { ...(cur ?? { price: p, prevClose: p, time: t, fromTrade: true }), ext: { price: p, time: t } };
-          } else if (!cur || t >= cur.time) next[s] = { price: p, prevClose: cur?.prevClose ?? p, time: t, fromTrade: true };
+          const updated = applyTrade(prev[s], p, t);
+          if (updated) next[s] = updated;
         }
         return next;
       });
