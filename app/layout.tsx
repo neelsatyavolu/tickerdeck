@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "tickerquill",
   description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
-  // Link previews. The image is app/opengraph-image.png; metadataBase makes its URL absolute.
-  metadataBase: new URL("https://tickerquill.n3el.dev"),
+  // Link previews. The image is app/opengraph-image.tsx; metadataBase makes its URL absolute.
+  // tickerquill.n3el.dev 308s here, and some link unfurlers don't follow redirects for images.
+  metadataBase: new URL("https://tickerquill.xanom.co"),
   openGraph: {
     title: "tickerquill — track portfolios with forecasts and an AI analyst",
     description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
