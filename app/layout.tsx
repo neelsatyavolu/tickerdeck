@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { GeistSerif } from "geist/font/serif";
+import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeSync } from "@/components/Theme";
 import { THEME_SCRIPT } from "@/lib/theme";
@@ -8,7 +9,6 @@ import "./themes.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "tickerquill",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${GeistSerif.variable}`} suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint; see lib/theme.ts. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />

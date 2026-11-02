@@ -80,7 +80,7 @@ export default function DashboardsPage() {
           {TEMPLATES.map((t) => (
             <div key={t.id} className="stack" style={{ gap: 10 }}>
               <div className="label" style={{ color: "var(--fg)" }}>{t.name}</div>
-              <p className="serif muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>{t.description}</p>
+              <p className="muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>{t.description}</p>
               {t.needsSource ? (
                 <div className="row">
                   <select className="input" value={wallSource} onChange={(e) => setWallSource(e.target.value)} aria-label={`Symbols for the ${t.noun ?? "wall"}`}>
@@ -102,7 +102,7 @@ export default function DashboardsPage() {
           ))}
           <div className="stack" style={{ gap: 10 }}>
             <div className="label" style={{ color: "var(--fg)" }}>Blank</div>
-            <p className="serif muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>Start empty and add panels yourself, or ask the assistant to build them.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 16, flex: 1 }}>Start empty and add panels yourself, or ask the assistant to build them.</p>
             <form className="row" onSubmit={(e) => { e.preventDefault(); start("blank", () => create(blankName.trim() || "My dashboard")); }}>
               <input className="input" placeholder="Name" value={blankName} maxLength={80} onChange={(e) => setBlankName(e.target.value)} aria-label="Dashboard name" />
               <button className="btn btn-primary" disabled={busy !== null}>{busy === "blank" ? "Creating" : "Create"}</button>
