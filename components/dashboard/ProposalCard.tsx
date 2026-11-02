@@ -78,9 +78,9 @@ export function ProposalCard({ proposal, defaultDashboardId }: { proposal: Propo
     <div className="panel-proposal">
       <div className="spread" style={{ alignItems: "center" }}>
         <span className="label" style={{ color: "var(--fg)" }}>{proposal.kind === "replace" ? "Layout edit" : "Proposed panels"}</span>
-        <span className="faint mono" style={{ fontSize: 11 }}>{summary}</span>
+        <span className="faint" style={{ fontSize: 11 }}>{summary}</span>
       </div>
-      <ul style={{ margin: 0, paddingLeft: 18 }} className="mono">
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
         {proposal.panels.slice(0, 12).map((p) => (
           <li key={p.id} style={{ fontSize: 12 }}>
             {p.title ?? PANEL_META[p.type].label}

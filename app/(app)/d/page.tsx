@@ -64,10 +64,10 @@ export default function DashboardsPage() {
             {dashboards.map((d) => (
               <Link key={d.id} href={`/d/${d.id}`} className="list-row" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr) auto" }}>
                 <span style={{ fontWeight: 500 }}>{d.name}</span>
-                <span className="faint mono hide-sm" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span className="faint hide-sm" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {d.panels.length} panels · {[...new Set(d.panels.map((p) => PANEL_META[p.type].label))].join(", ")}
                 </span>
-                <span className="faint mono" style={{ fontSize: 12 }}>{timeAgo(Date.parse(d.updated_at))}</span>
+                <span className="faint" style={{ fontSize: 12 }}>{timeAgo(Date.parse(d.updated_at))}</span>
               </Link>
             ))}
           </div>

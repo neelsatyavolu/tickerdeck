@@ -43,7 +43,7 @@ export function AssistantDefaults({ connected }: { connected: Record<Provider, b
           <div key={p} className="stack" style={{ gap: 12, opacity: connected && !connected[p] ? 0.6 : 1 }}>
             <div className="spread">
               <div className="label" style={{ color: "var(--fg)" }}>{NAME[p]}</div>
-              {connected && !connected[p] && <span className="faint mono" style={{ fontSize: 11 }}>not connected</span>}
+              {connected && !connected[p] && <span className="faint" style={{ fontSize: 11 }}>not connected</span>}
             </div>
             <label className="field">
               <span className="label">Default model</span>

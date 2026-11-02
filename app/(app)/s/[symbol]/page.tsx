@@ -129,14 +129,14 @@ export default function StockPage() {
           <div className="hero-value" style={{ fontSize: 40 }}>{priceOf(symbol, price)}</div>
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
             <Change amount={change} percent={change !== null && prevClose ? change / prevClose : null} money={!isIndexPage} />
-            <span className="faint mono" style={{ fontSize: 12 }}>{live?.fromTrade && lastTrade ? `trade ${timeAgo(live.time)}` : ext ? "at close" : "today"}</span>
+            <span className="faint" style={{ fontSize: 12 }}>{live?.fromTrade && lastTrade ? `trade ${timeAgo(live.time)}` : ext ? "at close" : "today"}</span>
           </div>
           {ext && (
             <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }} aria-label={ext.session === "pre" ? "Pre-market" : "After hours"}>
               <span className="label">{ext.session === "pre" ? "Pre-market" : "After hours"}</span>
               <span className="num">{priceOf(symbol, ext.price)}</span>
               <Change amount={ext.change} percent={ext.changePct} />
-              {ext.asOf && <span className="faint mono" style={{ fontSize: 12 }}>{ext.asOf}</span>}
+              {ext.asOf && <span className="faint" style={{ fontSize: 12 }}>{ext.asOf}</span>}
             </div>
           )}
         </div>

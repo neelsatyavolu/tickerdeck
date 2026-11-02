@@ -147,7 +147,7 @@ export default function Home() {
                 <div className="hero-value" style={{ fontSize: 44 }}>{usd(money.value)}</div>
                 <div className="row" style={{ marginTop: 6 }}>
                   <Change amount={money.day} percent={money.value - money.day > 0 ? money.day / (money.value - money.day) : null} />
-                  <span className="faint mono" style={{ fontSize: 12 }}>today</span>
+                  <span className="faint" style={{ fontSize: 12 }}>today</span>
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
@@ -164,7 +164,7 @@ export default function Home() {
             <div style={{ marginTop: 4 }}>
               {money.rows.slice(0, 5).map(({ p, totals }) => (
                 <Link key={p.id} href={`/p/${p.id}`} className="home-row">
-                  <span style={{ fontWeight: 500 }}>{p.name} <span className="faint mono" style={{ fontSize: 11 }}>{p.kind}</span></span>
+                  <span style={{ fontWeight: 500 }}>{p.name} <span className="faint" style={{ fontSize: 11 }}>{p.kind}</span></span>
                   <span className="num">{usd(totals.marketValue + totals.cash)}</span>
                   <span className={`num ${tone(totals.dayChangePct)}`}>{pct(totals.dayChangePct)}</span>
                 </Link>
@@ -225,7 +225,7 @@ export default function Home() {
             {recentDashboards.map((d) => (
               <Link key={d.id} href={`/d/${d.id}`} className="home-row">
                 <span style={{ fontWeight: 500 }}>{d.name}</span>
-                <span className="faint mono" style={{ fontSize: 11 }}>{d.panels.length} panel{d.panels.length === 1 ? "" : "s"} · {timeAgo(Date.parse(d.updated_at))}</span>
+                <span className="faint" style={{ fontSize: 11 }}>{d.panels.length} panel{d.panels.length === 1 ? "" : "s"} · {timeAgo(Date.parse(d.updated_at))}</span>
               </Link>
             ))}
             <div className="row" style={{ gap: 6, marginTop: 12 }}>

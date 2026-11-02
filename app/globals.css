@@ -108,7 +108,10 @@ h2.display { font-size: 22px; line-height: 1.4; }
 .grid-cells > * { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; padding: 16px; min-width: 0; }
 .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* One cell per return window on wide screens; three to a row on phones, where nine would be ~40px each. */
+.perf-strip { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
 @media (max-width: 760px) {
+  .perf-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cols-2 { grid-template-columns: minmax(0, 1fr); }
   .page { padding: 32px 16px 64px; }

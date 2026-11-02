@@ -103,7 +103,7 @@ export function ImportCsv({ portfolioId, onDone, onCancel }: Props) {
 
       {result && (
         <>
-          <div className="mono" style={{ fontSize: 13 }}>
+          <div className="num" style={{ fontSize: 13 }}>
             {result.holdings.length} lot{result.holdings.length === 1 ? "" : "s"} across {symbolCount} symbol{symbolCount === 1 ? "" : "s"}
             <span className="faint"> · {result.format === "yahoo" ? "Yahoo Finance export" : "generic CSV"}</span>
             {result.skipped.length > 0 && <span className="faint"> · {result.skipped.length} skipped</span>}

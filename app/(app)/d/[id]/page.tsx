@@ -191,7 +191,7 @@ export default function DashboardPage() {
         {display && (
           <div className="dash-wall-head">
             <span className="label" style={{ color: "var(--fg)" }}>{dashboard?.name}</span>
-            <span className="faint mono" style={{ fontSize: 12 }}>{WAKE_NOTE[wake]}</span>
+            <span className="faint" style={{ fontSize: 12 }}>{WAKE_NOTE[wake]}</span>
             <span style={{ flex: 1 }} />
             <button className="btn-text" onClick={exitDisplay}>Exit display mode</button>
           </div>

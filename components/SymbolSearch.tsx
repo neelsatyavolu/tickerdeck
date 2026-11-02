@@ -118,7 +118,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
     <div className="search-box" style={width ? { width } : undefined}>
       <input
         id={inputId}
-        className="input mono"
+        className="input"
         value={q}
         placeholder={placeholder}
         onChange={(e) => {

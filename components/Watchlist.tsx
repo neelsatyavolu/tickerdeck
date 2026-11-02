@@ -217,7 +217,7 @@ export function WatchButton({ symbol, name }: { symbol: string; name?: string | 
               <label key={l.id} className="watch-menu-item" role="menuitemcheckbox" aria-checked={on}>
                 <input type="checkbox" checked={on} disabled={busy} onChange={() => run(() => (on ? remove(symbol, l.id) : add(symbol, name, l.id)))} />
                 <span>{l.name}</span>
-                {l.is_primary && <span className="faint mono" style={{ fontSize: 11 }}>primary</span>}
+                {l.is_primary && <span className="faint" style={{ fontSize: 11 }}>primary</span>}
               </label>
             );
           })}

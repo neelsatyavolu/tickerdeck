@@ -169,7 +169,7 @@ export default function SettingsPage() {
       <section className="section">
         <div className="spread"><h2 className="display">Account</h2></div>
         <div className="row">
-          <span className="mono">{email ?? "…"}</span>
+          <span>{email ?? "…"}</span>
           <button className="btn btn-ghost" onClick={signOut} disabled={signingOut}>Sign out</button>
         </div>
       </section>

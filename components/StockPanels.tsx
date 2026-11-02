@@ -18,7 +18,7 @@ const count = (v: number | null) => (v === null ? "—" : new Intl.NumberFormat(
 export function PerformanceStrip({ rows }: { rows: PeriodReturn[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="grid-cells" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }} role="list" aria-label="Price performance">
+    <div className="grid-cells perf-strip" style={{ "--cols": rows.length } as React.CSSProperties} role="list" aria-label="Price performance">
       {rows.map((r) => (
         <div key={r.label} role="listitem" style={{ padding: "10px 12px" }}>
           <div className="label">{r.label}</div>
@@ -38,7 +38,7 @@ function RangeBar({ low, high, price }: { low: number | null; high: number | nul
       <div style={{ position: "relative", height: 8, background: "var(--accent-wash-2)", marginTop: 8 }} role="img" aria-label={`52-week range ${usd(low)} to ${usd(high)}${price !== null ? `, now ${usd(price)}` : ""}`}>
         {at !== null && <div style={{ position: "absolute", top: -3, left: `calc(${at * 100}% - 5px)`, width: 10, height: 14, background: "var(--fg)", border: "2px solid var(--bg)" }} />}
       </div>
-      <div className="spread mono faint" style={{ fontSize: 11, marginTop: 4 }}>
+      <div className="spread num faint" style={{ fontSize: 11, marginTop: 4 }}>
         <span>{usd(low)}</span>
         <span>{usd(high)}</span>
       </div>
