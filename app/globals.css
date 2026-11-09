@@ -434,3 +434,9 @@ table.data.compact th, table.data.compact td { padding: 8px 8px; font-size: 13px
 .footer a:hover { color: var(--fg); }
 .footer nav { display: flex; gap: 16px; }
 
+
+/* Return strip: reflow to rows of four on phones rather than squeezing ten columns */
+@media (max-width: 760px) {
+  .perf-strip { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)) !important; }
+  .perf-strip > * { padding: 8px !important; }
+}

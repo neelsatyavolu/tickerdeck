@@ -18,7 +18,7 @@ const count = (v: number | null) => (v === null ? "—" : new Intl.NumberFormat(
 export function PerformanceStrip({ rows }: { rows: PeriodReturn[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="grid-cells" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }} role="list" aria-label="Price performance">
+    <div className="grid-cells perf-strip" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }} role="list" aria-label="Price performance">
       {rows.map((r) => (
         <div key={r.label} role="listitem" style={{ padding: "12px 12px" }}>
           <div className="label">{r.label}</div>
