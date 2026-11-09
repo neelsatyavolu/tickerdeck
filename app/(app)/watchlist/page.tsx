@@ -230,7 +230,7 @@ function WatchlistView() {
           </Link>
         ))}
         {creating === null ? (
-          <button className="list-tab btn-text" onClick={() => setCreating("")}>+ New list</button>
+          <button className="list-tab btn-text" style={{ textTransform: "uppercase" }} onClick={() => setCreating("")}>+ New list</button>
         ) : (
           <form className="row" style={{ gap: 6, padding: "4px 8px" }} onSubmit={(e) => { e.preventDefault(); onCreateList(); }}>
             <input className="input" style={{ padding: "4px 8px", fontSize: 13 }} placeholder="List name" value={creating} maxLength={60} autoFocus onChange={(e) => setCreating(e.target.value)} aria-label="New list name" />

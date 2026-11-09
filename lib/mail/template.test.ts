@@ -34,10 +34,10 @@ describe("renderEmail", () => {
     expect(html).not.toContain("Freset&x=1");
   });
 
-  it("keeps the Blackletter palette and none of the old one", () => {
+  it("keeps the approved palette and never uses pure black or white", () => {
     const { html } = renderEmail(copy);
-    for (const color of ["#000000", "#FCFDFF", "#B1B2B3", "#888E90", "#242424"]) expect(html).toContain(color);
-    expect(html).not.toMatch(/#0E0E0D|#F2F0EA|Newsreader/i);
+    for (const color of ["#0E0E0D", "#F2F0EA", "#A9A8A3", "#757470", "#252523", "#4C8DFF"]) expect(html).toContain(color);
+    expect(html).not.toMatch(/#000000|#000;|#fff;|#ffffff/i);
   });
 
   it("escapes hostile values everywhere they appear", () => {

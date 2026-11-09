@@ -20,7 +20,7 @@ export function TargetRange({ targets, price }: { targets: AnalystTargets; price
           <div style={{ position: "absolute", top: 12, width: 12, height: 12, borderRadius: "50%", left: `calc(${at(price)} - 6px)`, background: "var(--fg)", border: "2px solid var(--bg)" }} />
         )}
       </div>
-      <div className="spread num" style={{ fontSize: 12 }}>
+      <div className="spread mono" style={{ fontSize: 12 }}>
         <span className="faint">low {usd(low, { digits: 0 })}</span>
         <span>mean {usd(mean, { digits: 0 })}{upside !== null && <span className="faint"> ({upside >= 0 ? "+" : "−"}{Math.abs(upside * 100).toFixed(1)}% vs price)</span>}</span>
         <span className="faint">high {usd(high, { digits: 0 })}</span>
@@ -49,7 +49,7 @@ export function Ratings({ rec }: { rec: Recommendation }) {
     <div className="stack" style={{ gap: 6 }}>
       {RATING_ROWS.map((r) => (
         <div key={r.key} style={{ display: "grid", gridTemplateColumns: "92px 1fr", alignItems: "center", gap: 8 }}>
-          <span className="faint" style={{ fontSize: 12 }}>{r.label}</span>
+          <span className="mono faint" style={{ fontSize: 12 }}>{r.label}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ display: "inline-block", height: 12, width: `${(rec[r.key] / max) * 80}%`, minWidth: rec[r.key] ? 2 : 0, background: "var(--fg-3)" }} />
             <span className="num" style={{ fontSize: 12 }}>{rec[r.key]}</span>

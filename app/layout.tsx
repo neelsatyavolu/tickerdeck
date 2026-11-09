@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { GeistSerif } from "geist/font/serif";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import Script from "next/script";
 import { ThemeSync } from "@/components/Theme";
 import { THEME_SCRIPT } from "@/lib/theme";
@@ -9,13 +8,13 @@ import "./themes.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "tickerquill",
   description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
-  // Link previews. The image is app/opengraph-image.tsx; metadataBase makes its URL absolute.
-  // tickerquill.n3el.dev 308s here, and some link unfurlers don't follow redirects for images.
-  metadataBase: new URL("https://tickerquill.xanom.co"),
+  // Link previews. The image is app/opengraph-image.png; metadataBase makes its URL absolute.
+  metadataBase: new URL("https://tickerquill.n3el.dev"),
   openGraph: {
     title: "tickerquill — track portfolios with forecasts and an AI analyst",
     description: "Track portfolios with live prices, forecasts and an AI analyst on your own subscription.",
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${GeistSerif.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable}`} suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint; see lib/theme.ts. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />

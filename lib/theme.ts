@@ -4,8 +4,8 @@
 
 export const THEMES = [
   { id: "system", label: "System", note: "Ink or Paper, following this device." },
-  { id: "ink", label: "Ink", note: "True black. The default dark." },
-  { id: "paper", label: "Paper", note: "Near-white, for bright rooms." },
+  { id: "ink", label: "Ink", note: "Warm near-black. The default dark." },
+  { id: "paper", label: "Paper", note: "Off-white, for bright rooms." },
   { id: "graphite", label: "Graphite", note: "Soft dark grey, kinder to old LCD panels." },
   { id: "salmon", label: "Salmon", note: "Financial-paper pink." },
   { id: "night", label: "Night", note: "Dimmed, for a screen left on after dark." },

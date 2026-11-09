@@ -27,8 +27,8 @@ export default function ForgotPasswordPage() {
   return (
     <main className="page" style={{ maxWidth: 520, paddingTop: 96 }}>
       <div className="label">tickerquill</div>
-      <h1 className="display" style={{ marginTop: 12 }}>Reset password</h1>
-      <p className="muted" style={{ fontSize: 19, marginTop: 16 }}>
+      <h1 className="display" style={{ marginTop: 12 }}>Reset password<span className="caret" aria-hidden="true" /></h1>
+      <p className="serif muted" style={{ fontSize: 19, marginTop: 16 }}>
         Enter the email you signed up with and we will send you a link to choose a new password.
       </p>
       <form onSubmit={submit} className="stack" style={{ marginTop: 24 }}>

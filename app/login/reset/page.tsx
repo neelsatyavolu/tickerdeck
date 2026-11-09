@@ -83,8 +83,8 @@ function ResetPassword() {
   return (
     <main className="page" style={{ maxWidth: 520, paddingTop: 96 }}>
       <div className="label">tickerquill</div>
-      <h1 className="display" style={{ marginTop: 12 }}>{usable ? "New password" : "Link expired"}</h1>
-      <p className="muted" style={{ fontSize: 19, marginTop: 16 }}>
+      <h1 className="display" style={{ marginTop: 12 }}>{usable ? "New password" : "Link expired"}<span className="caret" aria-hidden="true" /></h1>
+      <p className="serif muted" style={{ fontSize: 19, marginTop: 16 }}>
         {usable ? `Choose a new password of at least ${MIN_PASSWORD_LENGTH} characters.` : "Reset links work once and expire soon after they are sent."}
       </p>
       {usable ? <NewPasswordForm token={token} onExpired={() => setExpired(true)} /> : <ExpiredLink />}

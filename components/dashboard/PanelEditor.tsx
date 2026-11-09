@@ -62,7 +62,7 @@ export function PanelEditor({ initial, onSave, onCancel }: Props) {
           </button>
         ))}
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 16 }}>{meta.description}</p>
+      <p className="serif muted" style={{ margin: 0, fontSize: 16 }}>{meta.description}</p>
 
       {meta.maxSymbols > 0 ? (
         <div className="field">

@@ -59,8 +59,8 @@ function LoginForm() {
   return (
     <main className="page" style={{ maxWidth: 520, paddingTop: 96 }}>
       <div className="label">tickerquill</div>
-      <h1 className="display" style={{ marginTop: 12 }}>{mode === "sign-in" ? "Sign in" : "Create account"}</h1>
-      <p className="muted" style={{ fontSize: 19, marginTop: 16 }}>
+      <h1 className="display" style={{ marginTop: 12 }}>{mode === "sign-in" ? "Sign in" : "Create account"}<span className="caret" aria-hidden="true" /></h1>
+      <p className="serif muted" style={{ fontSize: 19, marginTop: 16 }}>
         Portfolios, live prices and forecasts, with an analyst that runs on your own ChatGPT or Grok subscription.
       </p>
       <form onSubmit={submit} className="stack" style={{ marginTop: 24 }}>

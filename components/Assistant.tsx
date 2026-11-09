@@ -80,7 +80,7 @@ const MD_COMPONENTS = {
     if (!link.host) return <a href={link.href}>{children}</a>;
     return (
       <a href={link.href} target="_blank" rel="noopener noreferrer nofollow">
-        {children} <span className="faint" style={{ fontSize: 11 }}>({link.host})</span>
+        {children} <span className="faint mono" style={{ fontSize: 11 }}>({link.host})</span>
       </a>
     );
   },
@@ -115,7 +115,7 @@ function Sources({ items }: { items: Source[] }) {
         {links.map((l, i) => (
           <li key={i}>
             <a href={l.href} target="_blank" rel="noopener noreferrer nofollow">{l.title ?? l.host}</a>
-            {l.title && <span className="faint"> ({l.host})</span>}
+            {l.title && <span className="faint mono"> ({l.host})</span>}
           </li>
         ))}
       </ol>

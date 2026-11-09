@@ -92,7 +92,7 @@ export function ImportCsv({ portfolioId, onDone, onCancel }: Props) {
         <div className="label" style={{ color: "var(--fg)" }}>Import from CSV</div>
         <button className="btn-text" onClick={onCancel}>Cancel</button>
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 17, maxWidth: "64ch" }}>
+      <p className="serif muted" style={{ margin: 0, fontSize: 17, maxWidth: "64ch" }}>
         In Yahoo Finance, open a portfolio and choose <strong>Export</strong> to download <span className="mono" style={{ fontSize: 14 }}>quotes.csv</span>. Broker files with symbol, quantity, cost and date columns work too.
       </p>
       <label className="field" style={{ maxWidth: 420 }}>
@@ -103,7 +103,7 @@ export function ImportCsv({ portfolioId, onDone, onCancel }: Props) {
 
       {result && (
         <>
-          <div className="num" style={{ fontSize: 13 }}>
+          <div className="mono" style={{ fontSize: 13 }}>
             {result.holdings.length} lot{result.holdings.length === 1 ? "" : "s"} across {symbolCount} symbol{symbolCount === 1 ? "" : "s"}
             <span className="faint"> · {result.format === "yahoo" ? "Yahoo Finance export" : "generic CSV"}</span>
             {result.skipped.length > 0 && <span className="faint"> · {result.skipped.length} skipped</span>}

@@ -33,7 +33,7 @@ export function ThemePicker() {
               <span data-theme={t.id}><i /></span>
             </span>
           )}
-          <span style={{ fontSize: 14, fontWeight: 500 }}>{t.label}</span>
+          <span className="mono" style={{ fontSize: 13 }}>{t.label}</span>
           <span className="faint" style={{ fontSize: 13 }}>{t.note}</span>
         </button>
       ))}

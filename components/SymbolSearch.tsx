@@ -118,7 +118,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
     <div className="search-box" style={width ? { width } : undefined}>
       <input
         id={inputId}
-        className="input"
+        className="input mono"
         value={q}
         placeholder={placeholder}
         onChange={(e) => {
@@ -144,7 +144,7 @@ export function SymbolSearch({ onSelect, placeholder = "Search ticker or company
               <button type="button" role="option" aria-selected={i === active} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => prefetch && prefetchStock(r.symbol)} onClick={() => choose(r.symbol, r.name)}>
                 <span className="mono" style={{ minWidth: 64 }}>{r.symbol}</span>
                 <span className="faint" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{r.name}</span>
-                {r.type && r.type !== "Stock" && <span className="faint" style={{ fontSize: 12 }}>{r.type}</span>}
+                {r.type && r.type !== "Stock" && <span className="faint mono" style={{ fontSize: 10, textTransform: "uppercase" }}>{r.type}</span>}
               </button>
             </li>
           ))}

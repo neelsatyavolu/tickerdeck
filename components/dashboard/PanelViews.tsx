@@ -231,7 +231,7 @@ function PortfolioView({ panel }: { panel: Panel }) {
       <div className="spread">
         <div>
           <div className="hero-value" style={{ fontSize: 32 }}>{usd(totals.marketValue + totals.cash)}</div>
-          <div className="row" style={{ marginTop: 4 }}><Change amount={totals.dayChange} percent={totals.dayChangePct} /><span className="faint" style={{ fontSize: 12 }}>today</span></div>
+          <div className="row" style={{ marginTop: 4 }}><Change amount={totals.dayChange} percent={totals.dayChangePct} /><span className="faint mono" style={{ fontSize: 12 }}>today</span></div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="label">Total gain</div>

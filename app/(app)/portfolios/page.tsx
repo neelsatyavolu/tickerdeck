@@ -48,7 +48,7 @@ export default function PortfoliosPage() {
       <div className="hero-value" style={{ marginTop: 8 }}>{usd(value)}</div>
       <div className="row" style={{ marginTop: 8 }}>
         <Change amount={day} percent={value - day > 0 ? day / (value - day) : null} />
-        <span className="faint" style={{ fontSize: 12 }}>today</span>
+        <span className="faint mono" style={{ fontSize: 12 }}>today</span>
       </div>
 
       <div className="grid-cells cols-4" style={{ marginTop: 32 }}>

@@ -100,7 +100,7 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
         <div className="label" style={{ color: "var(--fg)" }}>{info.name}</div>
         <span className="status"><span className={`dot ${connected ? "ok" : ""}`} />{connected ? "connected" : "not connected"}</span>
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 17 }}>{info.plan}</p>
+      <p className="serif muted" style={{ margin: 0, fontSize: 17 }}>{info.plan}</p>
       {connected ? (
         <div><button className="btn btn-ghost" onClick={disconnect} disabled={busy}>Disconnect</button></div>
       ) : pending ? (
@@ -143,7 +143,7 @@ export default function SettingsPage() {
 
       <section className="section">
         <div className="spread"><h2 className="display">AI subscriptions</h2></div>
-        <p className="muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
+        <p className="serif muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
           The assistant runs on your own subscription. Sign-in tokens are kept in secure cookies in this browser only and are never saved to the database.
         </p>
         <div className="grid-cells cols-2">
@@ -160,7 +160,7 @@ export default function SettingsPage() {
 
       <section className="section">
         <div className="spread"><h2 className="display">Appearance</h2></div>
-        <p className="muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
+        <p className="serif muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
           The theme is saved in this browser, so a wall display can look different from your laptop.
         </p>
         <ThemePicker />
@@ -169,7 +169,7 @@ export default function SettingsPage() {
       <section className="section">
         <div className="spread"><h2 className="display">Account</h2></div>
         <div className="row">
-          <span>{email ?? "…"}</span>
+          <span className="mono">{email ?? "…"}</span>
           <button className="btn btn-ghost" onClick={signOut} disabled={signingOut}>Sign out</button>
         </div>
       </section>

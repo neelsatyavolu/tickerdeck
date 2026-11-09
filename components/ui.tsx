@@ -69,6 +69,7 @@ export function FeedBadge() {
     <span className="status" title={title} aria-live="polite">
       <span className={`dot ${dot}`} />
       {text}
+      {dot === "live" && <span className="caret" aria-hidden="true" />}
     </span>
   );
 }
