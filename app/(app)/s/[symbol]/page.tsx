@@ -116,7 +116,7 @@ export default function StockPage() {
       <div className="label">{meta || "stock"}</div>
       <div className="spread" style={{ marginTop: 8 }}>
         <div>
-          <h1 className="display">{symbol}</h1>
+          <h1 className="display mono">{symbol}</h1>
           <div className="serif muted" style={{ fontSize: 19, marginTop: 4 }}>{name ?? " "}</div>
           {marketCap !== null && (
             <div className="row" style={{ marginTop: 8 }}>
