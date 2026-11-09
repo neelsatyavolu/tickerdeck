@@ -80,7 +80,7 @@ export function ProposalCard({ proposal, defaultDashboardId }: { proposal: Propo
         <span className="label" style={{ color: "var(--fg)" }}>{proposal.kind === "replace" ? "Layout edit" : "Proposed panels"}</span>
         <span className="faint mono" style={{ fontSize: 11 }}>{summary}</span>
       </div>
-      <ul style={{ margin: 0, paddingLeft: 18 }} className="mono">
+      <ul style={{ margin: 0, paddingLeft: 20 }} className="mono">
         {proposal.panels.slice(0, 12).map((p) => (
           <li key={p.id} style={{ fontSize: 12 }}>
             {p.title ?? PANEL_META[p.type].label}
@@ -98,7 +98,7 @@ export function ProposalCard({ proposal, defaultDashboardId }: { proposal: Propo
         </div>
       ) : count > 0 ? (
         <div className="row" style={{ gap: 10 }}>
-          <button className="btn btn-primary" style={{ padding: "6px 12px" }} onClick={apply} disabled={busy}>
+          <button className="btn btn-primary" style={{ padding: "8px 12px" }} onClick={apply} disabled={busy}>
             {busy ? "Applying" : actionLabel}
           </button>
           {dashboards.length > 0 && !picking && (

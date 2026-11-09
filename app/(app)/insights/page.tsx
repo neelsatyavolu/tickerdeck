@@ -136,7 +136,7 @@ export default function InsightsPage() {
           <div className="label">
             {set ? `Written ${timeAgo(Date.parse(set.generated_at))} by ${PROVIDER_LABEL[set.provider]} (${set.model})` : "Written by your ChatGPT or Grok subscription"}
           </div>
-          <h1 className="display" style={{ marginTop: 6 }}>AI insights</h1>
+          <h1 className="display" style={{ marginTop: 8 }}>AI insights</h1>
         </div>
         <div className="row" style={{ gap: 8 }}>
           {filters.length > 2 && (

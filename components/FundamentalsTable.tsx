@@ -80,7 +80,7 @@ export function FundamentalsTable({ symbols, onReady }: { symbols: string[]; onR
                 <td style={{ whiteSpace: "normal", minWidth: 160, fontFamily: "var(--sans)" }}>{r?.name ?? "—"}</td>
                 <td className="left">
                   <Link href={`/s/${encodeURIComponent(s)}`} onMouseEnter={() => prefetchStock(s)} style={{ fontWeight: 500 }}>{s}</Link>
-                  <a href={yahooUrl(s)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${s} on Yahoo Finance`}>↗</a>
+                  <a href={yahooUrl(s)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 8, fontSize: 12 }} aria-label={`${s} on Yahoo Finance`}>↗</a>
                 </td>
                 <td className="left">{r?.exchange ?? "—"}</td>
                 <td>{money(price)}</td>

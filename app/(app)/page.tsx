@@ -100,7 +100,7 @@ export default function Home() {
       <div className="dash-head">
         <div>
           <div className="label">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
-          <h1 className="display" style={{ marginTop: 6 }}>{greeting(now)}</h1>
+          <h1 className="display" style={{ marginTop: 8 }}>{greeting(now)}</h1>
         </div>
         <span className="status" title="Regular session, New York time">
           <span className={`dot ${status.open ? "live" : ""}`} />
@@ -119,7 +119,7 @@ export default function Home() {
             <Link key={s} href={`/s/${encodeURIComponent(s)}`} role="listitem" className="home-market" onMouseEnter={() => prefetchStock(s)}>
               <div className="label">{info?.name ?? s}</div>
               <div className="num" style={{ fontSize: 18, marginTop: 4 }}>{priceOf(s, live?.price ?? null)}</div>
-              <div className="spread" style={{ alignItems: "center", marginTop: 2 }}>
+              <div className="spread" style={{ alignItems: "center", marginTop: 4 }}>
                 <span className={`num ${tone(change)}`} style={{ fontSize: 12 }}>{pct(change)}</span>
                 <Sparkline values={spark} width={72} height={20} label={`${info?.name ?? s}, 1 month`} />
               </div>
@@ -145,7 +145,7 @@ export default function Home() {
             <div className="spread" style={{ alignItems: "flex-end" }}>
               <div>
                 <div className="hero-value" style={{ fontSize: 44 }}>{usd(money.value)}</div>
-                <div className="row" style={{ marginTop: 6 }}>
+                <div className="row" style={{ marginTop: 8 }}>
                   <Change amount={money.day} percent={money.value - money.day > 0 ? money.day / (money.value - money.day) : null} />
                   <span className="faint mono" style={{ fontSize: 12 }}>today</span>
                 </div>
@@ -229,10 +229,10 @@ export default function Home() {
               </Link>
             ))}
             <div className="row" style={{ gap: 6, marginTop: 12 }}>
-              <Link className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} href="/d">New dashboard</Link>
-              <Link className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} href="/portfolios">New portfolio</Link>
-              <Link className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} href="/watchlist">Watchlists</Link>
-              <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} onClick={() => ask("Give me a quick briefing on today: how the market and my holdings are doing, and anything notable in the news.")}>
+              <Link className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} href="/d">New dashboard</Link>
+              <Link className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} href="/portfolios">New portfolio</Link>
+              <Link className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} href="/watchlist">Watchlists</Link>
+              <button className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} onClick={() => ask("Give me a quick briefing on today: how the market and my holdings are doing, and anything notable in the news.")}>
                 Ask AI for today&apos;s briefing
               </button>
             </div>

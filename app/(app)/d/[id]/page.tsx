@@ -142,11 +142,11 @@ export default function DashboardPage() {
         <div style={{ minWidth: 0 }}>
           <div className="label"><Link href="/d">Dashboards</Link></div>
           {renaming !== null ? (
-            <form onSubmit={(e) => { e.preventDefault(); onRename(); }} style={{ marginTop: 6 }}>
+            <form onSubmit={(e) => { e.preventDefault(); onRename(); }} style={{ marginTop: 8 }}>
               <input className="input display" style={{ fontSize: 28, width: "min(560px, 100%)" }} value={renaming} maxLength={80} autoFocus onChange={(e) => setRenaming(e.target.value)} onBlur={onRename} aria-label="Dashboard name" />
             </form>
           ) : (
-            <h1 className="display" style={{ marginTop: 6 }}>{dashboard?.name}</h1>
+            <h1 className="display" style={{ marginTop: 8 }}>{dashboard?.name}</h1>
           )}
         </div>
         {!editing && (

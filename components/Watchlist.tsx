@@ -223,7 +223,7 @@ export function WatchButton({ symbol, name }: { symbol: string; name?: string | 
           })}
           <form
             className="row"
-            style={{ gap: 6, marginTop: 6 }}
+            style={{ gap: 6, marginTop: 8 }}
             onSubmit={(e) => {
               e.preventDefault();
               const n = newName.trim();

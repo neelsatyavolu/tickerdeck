@@ -100,7 +100,7 @@ export default function PortfoliosPage() {
         ) : null}
         {rows.length > 0 && (
           <div style={{ borderTop: "1px solid var(--border)", marginTop: creating ? 24 : 0 }}>
-            <div className="list-row label" style={{ paddingTop: 10, paddingBottom: 10 }}>
+            <div className="list-row label" style={{ paddingTop: 12, paddingBottom: 12 }}>
               <span>Name</span>
               <span className="r">Value</span>
               <span className="r hide-sm">Today</span>
@@ -110,7 +110,7 @@ export default function PortfoliosPage() {
               <Link key={p.id} href={`/p/${p.id}`} className="list-row">
                 <span>
                   <span style={{ fontWeight: 500 }}>{p.name}</span>{" "}
-                  <span className="label" style={{ marginLeft: 6 }}>{p.kind} · {positions.length}</span>
+                  <span className="label" style={{ marginLeft: 8 }}>{p.kind} · {positions.length}</span>
                 </span>
                 <span className="r num">{p.kind === "watchlist" ? "—" : usd(totals.marketValue + totals.cash)}</span>
                 <span className="r hide-sm"><Change percent={totals.dayChangePct} /></span>

@@ -205,7 +205,7 @@ function WatchlistView() {
         <div style={{ minWidth: 0 }}>
           <div className="label">{items.length} symbol{items.length === 1 ? "" : "s"}{active && !active.is_primary ? " · custom list" : ""}</div>
           {renaming !== null && active ? (
-            <form onSubmit={(e) => { e.preventDefault(); onRenameList(); }} style={{ marginTop: 6 }}>
+            <form onSubmit={(e) => { e.preventDefault(); onRenameList(); }} style={{ marginTop: 8 }}>
               <input className="input display" style={{ fontSize: 28, width: "min(480px, 100%)" }} value={renaming} maxLength={60} autoFocus onChange={(e) => setRenaming(e.target.value)} onBlur={onRenameList} aria-label="List name" />
             </form>
           ) : (
@@ -245,7 +245,7 @@ function WatchlistView() {
         <div className="row" style={{ marginTop: 16, gap: 6 }} aria-label="Add a market index">
           <span className="label" style={{ marginRight: 4 }}>Indexes</span>
           {INDEXES.filter((i) => !items.some((w) => w.symbol === i.symbol)).map((i) => (
-            <button key={i.symbol} className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} onClick={() => onAdd(i.symbol, i.name)}>
+            <button key={i.symbol} className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} onClick={() => onAdd(i.symbol, i.name)}>
               + {i.name}
             </button>
           ))}
@@ -313,7 +313,7 @@ function WatchlistView() {
                   </td>
                   <td className="left" style={{ whiteSpace: "normal", minWidth: 160 }}>
                     <Link href={`/s/${encodeURIComponent(r.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(r.symbol)}>{r.symbol}</Link>
-                    <a href={yahooUrl(r.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${r.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
+                    <a href={yahooUrl(r.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 8, fontSize: 12 }} aria-label={`${r.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     {r.name && <div className="faint" style={{ fontFamily: "var(--sans)", fontSize: 12, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>}
                   </td>
                   <td className="left">

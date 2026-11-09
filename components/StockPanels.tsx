@@ -20,7 +20,7 @@ export function PerformanceStrip({ rows }: { rows: PeriodReturn[] }) {
   return (
     <div className="grid-cells" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }} role="list" aria-label="Price performance">
       {rows.map((r) => (
-        <div key={r.label} role="listitem" style={{ padding: "10px 12px" }}>
+        <div key={r.label} role="listitem" style={{ padding: "12px 12px" }}>
           <div className="label">{r.label}</div>
           <div className={`num ${tone(r.value)}`} style={{ marginTop: 4, fontSize: 14 }}>{pct(r.value, 1)}</div>
         </div>
@@ -86,7 +86,7 @@ export function KeyStatsGrid({ stats, price }: { stats: KeyStats; price: number 
       {shown.map(([label, value]) => (
         <div key={label}>
           <div className="label">{label}</div>
-          <div className="num" style={{ marginTop: 6, fontSize: 15 }}>{value}</div>
+          <div className="num" style={{ marginTop: 8, fontSize: 15 }}>{value}</div>
         </div>
       ))}
     </div>
@@ -142,7 +142,7 @@ export function YahooLinks({ symbol }: { symbol: string }) {
   return (
     <nav className="row" aria-label={`${symbol} on Yahoo Finance`} style={{ gap: 4 }}>
       {YAHOO_PAGES.map(([label, page]) => (
-        <a key={label} className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 13 }} href={yahooUrl(symbol, page)} target="_blank" rel="noopener noreferrer">
+        <a key={label} className="btn btn-ghost" style={{ padding: "4px 12px", fontSize: 13 }} href={yahooUrl(symbol, page)} target="_blank" rel="noopener noreferrer">
           {label} <span aria-hidden="true">↗</span>
         </a>
       ))}
@@ -155,7 +155,7 @@ export function Peers({ symbols }: { symbols: string[] }) {
   return (
     <div className="row" style={{ gap: 6 }}>
       {symbols.map((s) => (
-        <Link key={s} href={`/s/${encodeURIComponent(s)}`} className="btn btn-ghost mono" style={{ padding: "4px 10px", fontSize: 13 }} onMouseEnter={() => prefetchStock(s)}>{s}</Link>
+        <Link key={s} href={`/s/${encodeURIComponent(s)}`} className="btn btn-ghost mono" style={{ padding: "4px 12px", fontSize: 13 }} onMouseEnter={() => prefetchStock(s)}>{s}</Link>
       ))}
     </div>
   );

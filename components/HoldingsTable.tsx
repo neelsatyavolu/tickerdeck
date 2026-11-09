@@ -60,11 +60,11 @@ export function HoldingsTable({ portfolio, positions }: Props) {
                 <Fragment key={p.symbol}>
                   <tr>
                     <td>
-                      <button className="btn-text" style={{ padding: "0 6px 0 0" }} onClick={() => setExpanded(open ? null : p.symbol)} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} ${p.symbol} lots`}>
+                      <button className="btn-text" style={{ padding: "0 8px 0 0" }} onClick={() => setExpanded(open ? null : p.symbol)} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} ${p.symbol} lots`}>
                         {open ? "−" : "+"}
                       </button>
                       <Link href={`/s/${encodeURIComponent(p.symbol)}`} style={{ fontWeight: 500 }} onMouseEnter={() => prefetchStock(p.symbol)}>{p.symbol}</Link>
-                      <a href={yahooUrl(p.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 6, fontSize: 12 }} aria-label={`${p.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
+                      <a href={yahooUrl(p.symbol)} target="_blank" rel="noopener noreferrer" className="faint" style={{ marginLeft: 8, fontSize: 12 }} aria-label={`${p.symbol} on Yahoo Finance`} title="Yahoo Finance">↗</a>
                     </td>
                     {!isWatch && <td>{shares(p.shares)}</td>}
                     {!isWatch && <td>{usd(p.avgCost)}</td>}

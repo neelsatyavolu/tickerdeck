@@ -140,7 +140,7 @@ export function ImportCsv({ portfolioId, onDone, onCancel }: Props) {
           {result.skipped.length > 0 && (
             <details>
               <summary className="notice" style={{ cursor: "pointer" }}>Skipped rows ({result.skipped.length})</summary>
-              <ul className="mono" style={{ fontSize: 12, color: "var(--fg-2)", margin: "8px 0 0", paddingLeft: 18 }}>
+              <ul className="mono" style={{ fontSize: 12, color: "var(--fg-2)", margin: "8px 0 0", paddingLeft: 20 }}>
                 {result.skipped.map((s, i) => (
                   <li key={i}>{s.line ? `line ${s.line}: ` : ""}{s.symbol || "(blank)"} — {s.reason}</li>
                 ))}

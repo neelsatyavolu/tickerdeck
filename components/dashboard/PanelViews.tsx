@@ -97,8 +97,8 @@ function MoversView({ panel }: { panel: Panel }) {
   );
   return (
     <div className="stack" style={{ gap: 12 }}>
-      <div><div className="label" style={{ marginBottom: 6 }}>Up</div>{up.length ? up.map(row) : <div className="notice">Nothing up today.</div>}</div>
-      <div><div className="label" style={{ marginBottom: 6 }}>Down</div>{down.length ? down.map(row) : <div className="notice">Nothing down today.</div>}</div>
+      <div><div className="label" style={{ marginBottom: 8 }}>Up</div>{up.length ? up.map(row) : <div className="notice">Nothing up today.</div>}</div>
+      <div><div className="label" style={{ marginBottom: 8 }}>Down</div>{down.length ? down.map(row) : <div className="notice">Nothing down today.</div>}</div>
     </div>
   );
 }
@@ -208,7 +208,7 @@ function NewsView({ panel }: { panel: Panel }) {
   return (
     <div className="panel-scroll">
       {items.slice(0, 8).map((n) => (
-        <article key={n.url} className="news-item" style={{ padding: "10px 0" }}>
+        <article key={n.url} className="news-item" style={{ padding: "12px 0" }}>
           <a className="headline" style={{ fontSize: 16 }} href={n.url} target="_blank" rel="noopener noreferrer">{n.headline}</a>
           <div className="meta">{n.source} · {timeAgo(n.time)}</div>
         </article>

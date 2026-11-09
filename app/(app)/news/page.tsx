@@ -81,7 +81,7 @@ function Card({ item, mine }: { item: NewsItem; mine: Set<string> }) {
   return (
     <article className={`news-card${src ? "" : " text"}`}>
       {src && <Photo item={item} src={src} onError={onError} />}
-      <div className="label" style={src ? { marginTop: 10 } : undefined}>{item.source} · {timeAgo(item.time)}</div>
+      <div className="label" style={src ? { marginTop: 12 } : undefined}>{item.source} · {timeAgo(item.time)}</div>
       <a className="news-card-headline" href={item.url} target="_blank" rel="noopener noreferrer">{item.headline}</a>
       {!src && item.summary && <p className="muted news-card-summary">{item.summary}</p>}
       <Tickers symbols={item.related ?? []} mine={mine} />
@@ -164,7 +164,7 @@ export default function NewsPage() {
       <div className="dash-head">
         <div>
           <div className="label">Curated from Reuters, Bloomberg, CNBC, Yahoo Finance and more</div>
-          <h1 className="display" style={{ marginTop: 6 }}>News</h1>
+          <h1 className="display" style={{ marginTop: 8 }}>News</h1>
         </div>
         <div className="row" style={{ gap: 8 }}>
           {!scope && <Seg label="Section" value={tab} options={TABS} onChange={setTab} />}
