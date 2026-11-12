@@ -3,6 +3,7 @@ import { createKeyLookup } from "@/lib/auth/webhookSignature";
 import { required } from "@/lib/env";
 import { AUTH_MAIL_FROM } from "@/lib/mail/authEmails";
 import { sendEmail } from "@/lib/mail/send";
+import { captureLink } from "@/lib/xanom/handoff";
 
 export const dynamic = "force-dynamic";
 
@@ -17,5 +18,7 @@ export function POST(request: Request) {
     findKey,
     now: Date.now,
     send: (mail) => sendEmail(mail, { apiKey: required("RESEND_API_KEY"), from: AUTH_MAIL_FROM }),
+    // Links the Xanom callback asked for go back to it instead of an inbox.
+    keep: captureLink,
   });
 }

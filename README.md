@@ -39,6 +39,14 @@ Password reset, email confirmation and sign-in link emails are sent by the app t
 
 Once `send.magic_link` is selected, Neon stops sending every email that carries a link, which includes the confirmation link at sign-up when the project verifies by link. There is no fallback: if all three delivery attempts fail (the webhook or Resend is down), the request fails for the user. Deploy the app with `RESEND_API_KEY` set before turning the webhook on.
 
+### Xanom sign-in
+
+"Continue with Xanom" signs people in with their accounts.xanom.co account; the email and password form keeps working. Settings can convert an account to Xanom or link an existing Xanom account. The contract is `SPEC.md` in the xanom-accounts repo.
+
+1. Set `XANOM_ISSUER` (`https://accounts.xanom.co`), `XANOM_CLIENT_ID` (`tickerquill`) and `XANOM_CLIENT_SECRET`.
+2. In Neon Auth, turn on the Magic Link plugin and keep the webhook above subscribed to `send.magic_link` at `https://tickerquill.xanom.co/api/webhooks/neon-auth`. Neon Auth can't start a session for a user the app vouches for, so after checking the Xanom id_token the callback asks Neon for a magic link and the webhook hands its token back instead of emailing it (`lib/xanom/handoff.ts`). An account whose email was never confirmed but has a password gets that password replaced through the same trick (a reset link nobody sees) and its other sessions ended, so a squatter can't keep a way in.
+3. Xanom links live in `xanom_links` (Neon Auth owns the user table). accounts.xanom.co reads `GET /api/xanom/summary` for its dashboard: counts only, no names, tickers or amounts.
+
 ### Brokerage sync (optional)
 
 Off unless the Plaid variables are set, and then only for one user.

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { authClient } from "@/lib/auth/client";
 import { FORGOT_PATH, passwordChangedNotice } from "@/lib/auth/passwordReset";
+import { xanomMessage } from "@/lib/xanom/messages";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -18,13 +19,18 @@ function sameOriginPath(next: string | null): string {
   }
 }
 
+/** The server only follows same-site paths in `return`, so `next` can pass through as is. */
+function xanomStart(next: string | null): string {
+  return `/api/xanom/start?intent=signin${next ? `&return=${encodeURIComponent(next)}` : ""}`;
+}
+
 function LoginForm() {
   const params = useSearchParams();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => xanomMessage(params.get("xanom")));
   const [notice, setNotice] = useState<string | null>(() => passwordChangedNotice(params));
 
   const submit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -63,7 +69,16 @@ function LoginForm() {
       <p className="serif muted" style={{ fontSize: 19, marginTop: 16 }}>
         Portfolios, live prices and forecasts, with an analyst that runs on your own ChatGPT or Grok subscription.
       </p>
-      <form onSubmit={submit} className="stack" style={{ marginTop: 24 }}>
+      <div className="stack" style={{ marginTop: 24 }}>
+        <a className="btn btn-primary" href={xanomStart(params.get("next"))}>
+          Continue with Xanom
+        </a>
+        <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+          One account for TickerQuill and the other Xanom apps. New here? It creates your account.
+        </p>
+      </div>
+      <div className="label" style={{ marginTop: 32 }}>Or use your email and password</div>
+      <form onSubmit={submit} className="stack" style={{ marginTop: 12 }}>
         <label className="field">
           <span className="label">Email</span>
           <input className="input" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -81,7 +96,7 @@ function LoginForm() {
           />
         </label>
         <div className="row">
-          <button className="btn btn-primary" disabled={busy || !email || password.length < 8}>
+          <button className="btn btn-ghost" disabled={busy || !email || password.length < 8}>
             {busy ? "Working" : mode === "sign-in" ? "Sign in" : "Create account"}
           </button>
           <button type="button" className="btn-text" onClick={() => { setMode(mode === "sign-in" ? "sign-up" : "sign-in"); setError(null); }}>

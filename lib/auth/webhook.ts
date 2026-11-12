@@ -20,18 +20,23 @@ const envelopeSchema = z.object({
 
 const magicLinkSchema = z.object({
   user: z.object({ email: z.email() }),
-  event_data: z.object({ link_type: z.string().min(1), link_url: z.string().min(1) }),
+  event_data: z.object({ link_type: z.string().min(1), link_url: z.string().min(1), token: z.string().min(1).optional().catch(undefined) }),
 });
+
+/** A link Neon wants delivered, for code that may keep it instead of emailing it. */
+export type AuthLink = { linkType: string; linkUrl: string; token?: string; email: string };
 
 export type WebhookDeps = {
   findKey: KeyLookup;
   now: () => number;
   /** Sends one email; throws when it could not be handed over. */
   send: (mail: Mail) => Promise<void>;
+  /** True when the link was requested by the app itself and kept (lib/xanom/handoff.ts): no email then. */
+  keep?: (link: AuthLink) => Promise<boolean>;
 };
 
 type Parsed =
-  | { kind: "mail"; mail: Mail }
+  | { kind: "mail"; mail: Mail; link: AuthLink }
   | { kind: "ignored"; what: string }
   | { kind: "malformed"; why: string };
 
@@ -71,7 +76,12 @@ export function readEvent(rawBody: string, eventIdHeader: string | null): Parsed
 
   // The id in the body is signed; the X-Neon-Event-Id header carries the same value but is not.
   const idempotencyKey = envelope.data.event_id ?? (eventIdHeader?.slice(0, MAX_EVENT_ID_LENGTH) || undefined);
-  return { kind: "mail", mail: { ...authEmail(linkType, url), to: event.data.user.email, idempotencyKey } };
+  const to = event.data.user.email;
+  return {
+    kind: "mail",
+    mail: { ...authEmail(linkType, url), to, idempotencyKey },
+    link: { linkType, linkUrl: url, token: event.data.event_data.token, email: to },
+  };
 }
 
 const message = (err: unknown) => (err instanceof Error ? err.message : "unknown error");
@@ -108,6 +118,14 @@ export async function handleAuthWebhook(request: Request, deps: WebhookDeps): Pr
   if (parsed.kind === "ignored") {
     console.warn(`${TAG} ignored ${parsed.what}`);
     return reply(200);
+  }
+  if (deps.keep) {
+    try {
+      if (await deps.keep(parsed.link)) return reply(200);
+    } catch (err) {
+      console.error(`${TAG} could not check for a pending handoff: ${message(err)}`);
+      return reply(500, "Could not hand the link over.");
+    }
   }
   try {
     await deps.send(parsed.mail);

@@ -5,6 +5,7 @@ import { useAssistant } from "@/components/Assistant";
 import { AssistantDefaults } from "@/components/AssistantDefaults";
 import { Brokerages } from "@/components/Brokerages";
 import { ThemePicker } from "@/components/Theme";
+import { XanomAccount } from "@/components/XanomAccount";
 import { ErrorText } from "@/components/ui";
 import { authClient } from "@/lib/auth/client";
 
@@ -200,6 +201,7 @@ export default function SettingsPage() {
           <button className="btn btn-ghost" onClick={signOut} disabled={signingOut}>Sign out</button>
         </div>
         {userId && <p className="notice">User id <span className="mono">{userId}</span></p>}
+        <XanomAccount />
       </section>
     </div>
   );

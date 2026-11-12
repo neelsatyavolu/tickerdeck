@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_MAIL_FROM } from "../mail/authEmails";
 import { sendEmail } from "../mail/send";
 import { EVENT_ID, LINK_TOKEN, LINK_URL, magicLinkEvent, newSigningKey, signedRequest, type SigningKey } from "../../test/neonWebhook";
-import { handleAuthWebhook } from "./webhook";
+import { handleAuthWebhook, type WebhookDeps } from "./webhook";
 import { createKeyLookup } from "./webhookSignature";
 
 const JWKS_URL = "https://ep-test.neonauth.example/neondb/auth/.well-known/jwks.json";
@@ -13,7 +13,7 @@ const NOW = 1_800_000_000_000;
 type Sent = { headers: Record<string, string>; body: { from: string; to: string[]; subject: string; html: string; text: string } };
 
 /** Neon's key set and Resend behind one fake fetch, wired into the handler the way the route wires them. */
-function world(keys: SigningKey[], options: { resend?: number | "down"; jwks?: number } = {}) {
+function world(keys: SigningKey[], options: { resend?: number | "down"; jwks?: number; keep?: WebhookDeps["keep"] } = {}) {
   const sent: Sent[] = [];
   const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
     if (input === JWKS_URL) return Response.json({ keys: keys.map((k) => k.jwk) }, { status: options.jwks ?? 200 });
@@ -26,6 +26,7 @@ function world(keys: SigningKey[], options: { resend?: number | "down"; jwks?: n
     findKey: createKeyLookup(() => JWKS_URL, fetchImpl, () => NOW),
     now: () => NOW,
     send: (mail: Parameters<typeof sendEmail>[0]) => sendEmail(mail, { apiKey: API_KEY, from: AUTH_MAIL_FROM }, fetchImpl),
+    keep: options.keep,
   };
   return { sent, fetchImpl, post: (request: Request) => handleAuthWebhook(request, deps) };
 }
@@ -232,5 +233,37 @@ describe("handleAuthWebhook", () => {
       await post(signedRequest(key, body(), { timestamp: 1 })),
     ];
     for (const response of answers) expect((await response.text()).length).toBeLessThan(200);
+  });
+
+  describe("links the app asked for itself (Xanom sign-in)", () => {
+    it("hands a kept link over instead of emailing it", async () => {
+      const keep = vi.fn(async () => true);
+      const { post, sent } = world([key], { keep });
+      const response = await post(signedRequest(key, body({ link_type: "sign-in" }), { timestamp: NOW }));
+      expect(response.status).toBe(200);
+      expect(sent).toHaveLength(0);
+      expect(keep).toHaveBeenCalledWith({ linkType: "sign-in", linkUrl: LINK_URL, token: LINK_TOKEN, email: "ada@example.com" });
+    });
+
+    it("emails links it doesn't keep", async () => {
+      const { post, sent } = world([key], { keep: async () => false });
+      await post(signedRequest(key, body(), { timestamp: NOW }));
+      expect(sent).toHaveLength(1);
+    });
+
+    it("never offers an unsigned request", async () => {
+      const keep = vi.fn(async () => true);
+      const { post } = world([key], { keep });
+      const response = await post(signedRequest(key, body(), { timestamp: NOW, headers: { "x-neon-signature": null } }));
+      expect(response.status).toBe(401);
+      expect(keep).not.toHaveBeenCalled();
+    });
+
+    it("answers 500 so Neon retries when the check fails", async () => {
+      const { post, sent } = world([key], { keep: async () => { throw new Error("db down"); } });
+      const response = await post(signedRequest(key, body(), { timestamp: NOW }));
+      expect(response.status).toBe(500);
+      expect(sent).toHaveLength(0);
+    });
   });
 });
