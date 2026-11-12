@@ -34,7 +34,7 @@ Personal stock and portfolio tracker. It covers:
 Password reset, email confirmation and sign-in link emails are sent by the app through [Resend](https://resend.com), from `TickerQuill <no-reply@n3el.dev>`. Neon Auth hands each one over by calling a webhook.
 
 1. Add `RESEND_API_KEY` to the project. The sender's domain (`n3el.dev`) must be verified in Resend.
-2. In the Neon Console, open **Auth → Configuration → Webhooks**. Enable delivery, set the URL to `https://tickerquill.n3el.dev/api/webhooks/neon-auth`, and select the `send.magic_link` event.
+2. In the Neon Console, open **Auth → Configuration → Webhooks**. Enable delivery, set the URL to `https://tickerquill.xanom.co/api/webhooks/neon-auth`, and select the `send.magic_link` event.
 3. In the Neon Auth settings, make sure the site's origin (`https://tickerquill.n3el.dev`) is a trusted domain. The reset link returns to `/login/reset`, and Neon refuses to redirect anywhere it does not trust.
 
 Once `send.magic_link` is selected, Neon stops sending every email that carries a link, which includes the confirmation link at sign-up when the project verifies by link. There is no fallback: if all three delivery attempts fail (the webhook or Resend is down), the request fails for the user. Deploy the app with `RESEND_API_KEY` set before turning the webhook on.
