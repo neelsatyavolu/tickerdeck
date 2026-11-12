@@ -240,7 +240,9 @@ export default function StockPage() {
 }
 
 function AddToPortfolio({ symbol }: { symbol: string }) {
-  const { portfolios, mutate } = usePortfolios();
+  const { portfolios: all, mutate } = usePortfolios();
+  // Portfolios synced from a brokerage can't take lots by hand.
+  const portfolios = all.filter((p) => !p.link);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
   const [done, setDone] = useState<string | null>(null);

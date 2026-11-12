@@ -20,6 +20,7 @@ export function HoldingsTable({ portfolio, positions }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isWatch = portfolio.kind === "watchlist";
+  const synced = Boolean(portfolio.link);
   const lotsBySymbol = (s: string) => portfolio.holdings.filter((h) => h.symbol === s);
   const maxWeight = Math.max(...positions.map((p) => p.weight ?? 0), 0.0001);
 
@@ -109,8 +110,12 @@ export function HoldingsTable({ portfolio, positions }: Props) {
                           {!isWatch && <td>{usd(h.cost_basis)}</td>}
                           <td colSpan={isWatch ? 2 : 4} style={{ textAlign: "left", whiteSpace: "normal" }}>{h.note}</td>
                           <td>
-                            <button className="btn-text" onClick={() => setEditing(h.id)}>Edit</button>
-                            <button className="btn-text danger" onClick={() => remove(h)}>Delete</button>
+                            {!synced && (
+                              <>
+                                <button className="btn-text" onClick={() => setEditing(h.id)}>Edit</button>
+                                <button className="btn-text danger" onClick={() => remove(h)}>Delete</button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ),

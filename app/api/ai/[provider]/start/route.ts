@@ -7,6 +7,9 @@ export const dynamic = "force-dynamic";
 
 // POST /api/ai/:provider/start — begin the OAuth flow; the client opens the
 // returned authorizeUrl, then pastes back the callback link / code.
+// Local PKCE cookie only, so this is not on the 10/minute sensitive bucket
+// (that one is shared with the price stream and Plaid). Settings prepares both
+// providers on each visit.
 export function POST(_req: Request, { params }: { params: Promise<{ provider: string }> }) {
   return withUser(async () => {
     const { provider } = await params;
@@ -14,5 +17,5 @@ export function POST(_req: Request, { params }: { params: Promise<{ provider: st
     const { verifier, challenge, state } = generatePkce();
     await writePkce(provider, { verifier, state });
     return NextResponse.json({ authorizeUrl: buildAuthorizeUrl(provider, challenge, state) });
-  }, "sensitive");
+  });
 }

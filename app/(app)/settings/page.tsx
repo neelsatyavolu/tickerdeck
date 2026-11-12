@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { AssistantDefaults } from "@/components/AssistantDefaults";
+import { Brokerages } from "@/components/Brokerages";
 import { ThemePicker } from "@/components/Theme";
 import { ErrorText } from "@/components/ui";
 import { authClient } from "@/lib/auth/client";
@@ -37,6 +38,7 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signInUrl, setSignInUrl] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const info = INFO[provider];
 
   // Prepare the sign-in link ahead of time so "Connect" is a real link that
@@ -45,17 +47,37 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
   useEffect(() => {
     if (connected || pending) return;
     let cancelled = false;
-    const prepare = () =>
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const prepare = () => {
       post(`/api/ai/${provider}/start`)
-        .then(({ authorizeUrl }) => !cancelled && authorizeUrl && setSignInUrl(authorizeUrl))
-        .catch((err) => !cancelled && setError(err instanceof Error ? err.message : "Could not prepare sign-in."));
+        .then(({ authorizeUrl }) => {
+          if (cancelled || !authorizeUrl) return;
+          clearTimeout(retry);
+          setSignInUrl(authorizeUrl);
+          setError(null);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          const message = err instanceof Error ? err.message : "Could not prepare sign-in.";
+          setError(message);
+          // The limiter's window is one minute. Waiting for the 8-minute refresh leaves the button dead.
+          if (message.startsWith("Too many requests")) {
+            clearTimeout(retry);
+            retry = setTimeout(() => {
+              setError(null);
+              setAttempt((n) => n + 1);
+            }, 60_000);
+          }
+        });
+    };
     prepare();
     const id = setInterval(prepare, PREPARE_EVERY);
     return () => {
       cancelled = true;
       clearInterval(id);
+      clearTimeout(retry);
     };
-  }, [provider, connected, pending]);
+  }, [provider, connected, pending, attempt]);
 
   const complete = async () => {
     setBusy(true);
@@ -90,6 +112,8 @@ function Connection({ provider, connected, onChange }: { provider: Provider; con
       <a className={className} href={signInUrl} target="_blank" rel="noopener noreferrer" onClick={() => setPending(true)}>
         {label} <span aria-hidden="true">↗</span>
       </a>
+    ) : error ? (
+      <button type="button" className={className} onClick={() => { setError(null); setAttempt((n) => n + 1); }}>Try again</button>
     ) : (
       <button className={className} disabled>Preparing sign-in…</button>
     );
@@ -125,6 +149,7 @@ export default function SettingsPage() {
   const { status, refreshStatus } = useAssistant();
   const session = authClient.useSession();
   const email = session.data?.user?.email ?? null;
+  const userId = session.data?.user?.id ?? null;
   const [signingOut, setSigningOut] = useState(false);
 
   const signOut = async () => {
@@ -158,6 +183,8 @@ export default function SettingsPage() {
         <AssistantDefaults connected={status} />
       </section>
 
+      <Brokerages />
+
       <section className="section">
         <div className="spread"><h2 className="display">Appearance</h2></div>
         <p className="serif muted" style={{ fontSize: 17, maxWidth: "62ch", marginTop: 0 }}>
@@ -172,6 +199,7 @@ export default function SettingsPage() {
           <span className="mono">{email ?? "…"}</span>
           <button className="btn btn-ghost" onClick={signOut} disabled={signingOut}>Sign out</button>
         </div>
+        {userId && <p className="notice">User id <span className="mono">{userId}</span></p>}
       </section>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAssistant } from "@/components/Assistant";
 import { LineChart } from "@/components/charts/LineChart";
 import { ForecastPanel } from "@/components/ForecastPanel";
@@ -15,18 +15,21 @@ import { PortfolioForm } from "@/components/PortfolioForm";
 import { usePortfolios } from "@/components/Portfolios";
 import { useHistories } from "@/components/useHistory";
 import { Change, ErrorText, Seg, Tile } from "@/components/ui";
-import { pct, signedUsd, tone, usd } from "@/lib/format";
+import { pct, signedUsd, timeAgo, tone, usd } from "@/lib/format";
 import type { HistoryRange } from "@/lib/market/types";
 import { holdingsValueSeries } from "@/lib/portfolio/history";
 import { aggregatePositions, portfolioTotals } from "@/lib/portfolio/math";
+import { syncBrokerage } from "@/lib/client/plaid";
 import { addHolding, deletePortfolio, updatePortfolio } from "@/lib/client/portfolios";
+import { isStale } from "@/lib/plaid/stale";
+import { syncSummary } from "@/lib/plaid/summary";
 
 const RANGES = ["3mo", "6mo", "1y", "2y", "5y", "10y"] as const satisfies readonly HistoryRange[];
 
 export default function PortfolioPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { portfolios, loading, mutate } = usePortfolios();
+  const { portfolios, loading, mutate, refresh } = usePortfolios();
   const { ask } = useAssistant();
   const portfolio = portfolios.find((p) => p.id === id);
   const symbols = useMemo(() => [...new Set(portfolio?.holdings.map((h) => h.symbol) ?? [])], [portfolio]);
@@ -38,6 +41,35 @@ export default function PortfolioPage() {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [synced, setSynced] = useState<string | null>(null);
+
+  // A portfolio synced from a brokerage: read-only here, refreshed from there.
+  const link = portfolio?.link ?? null;
+  const sync = useCallback(
+    async (itemId: string) => {
+      setSyncing(true);
+      setError(null);
+      try {
+        setSynced(syncSummary(await mutate(() => syncBrokerage(itemId))));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Sync failed.");
+        await refresh(); // the link's status may have changed
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [mutate, refresh],
+  );
+
+  // Catch up once per visit when the last sync is old. Not while the
+  // brokerage wants a new sign-in: that sync would only fail again.
+  const autoSynced = useRef<string | null>(null);
+  useEffect(() => {
+    if (!link || link.status !== "ok" || !isStale(link.last_synced_at) || autoSynced.current === link.item_id) return;
+    autoSynced.current = link.item_id;
+    sync(link.item_id);
+  }, [link, sync]);
 
   const positions = useMemo(() => (portfolio ? aggregatePositions(portfolio.holdings, prices) : []), [portfolio, prices]);
   const totals = portfolio ? portfolioTotals(portfolio, positions) : null;
@@ -85,15 +117,28 @@ export default function PortfolioPage() {
     <PageGate key={id} title={portfolio.name} steps={steps}>
       <div className="spread">
         <div>
-          <div className="label">{portfolio.kind}{isPaper && portfolio.start_date ? ` · since ${portfolio.start_date}` : ""}</div>
+          <div className="label">
+            {portfolio.kind}{isPaper && portfolio.start_date ? ` · since ${portfolio.start_date}` : ""}
+            {link && ` · ${link.institution} · ${syncing ? "syncing" : link.last_synced_at ? `synced ${timeAgo(Date.parse(link.last_synced_at))}` : "not synced yet"}`}
+          </div>
           <h1 className="display" style={{ marginTop: 8 }}>{portfolio.name}</h1>
         </div>
         <div className="row">
           <button className="btn btn-ghost" onClick={() => ask(`Review the "${portfolio.name}" portfolio: performance, concentration and the main risks.`, { portfolioId: portfolio.id })}>Ask about this</button>
-          <button className="btn-text" onClick={() => setEditing((v) => !v)}>Edit</button>
-          <button className="btn-text danger" onClick={remove}>Delete</button>
+          {link ? (
+            link.status === "ok" && <button className="btn-text" onClick={() => sync(link.item_id)} disabled={syncing}>{syncing ? "Syncing" : "Sync now"}</button>
+          ) : (
+            <>
+              <button className="btn-text" onClick={() => setEditing((v) => !v)}>Edit</button>
+              <button className="btn-text danger" onClick={remove}>Delete</button>
+            </>
+          )}
         </div>
       </div>
+      {link?.status === "login_required" && (
+        <p className="notice">{link.institution} needs you to sign in again before this can sync. <Link href="/settings">Reconnect in Settings</Link></p>
+      )}
+      {synced && <p className="notice" role="status">{synced}</p>}
       <ErrorText error={error} />
       {editing && (
         <div style={{ marginTop: 16 }}>
@@ -122,7 +167,7 @@ export default function PortfolioPage() {
       <section className="section">
         <div className="spread">
           <h2 className="display">Holdings</h2>
-          {!adding && !importing && (
+          {!link && !adding && !importing && (
             <div className="row">
               <button className="btn btn-ghost" onClick={() => setImporting(true)}>Import CSV</button>
               <button className="btn btn-primary" onClick={() => setAdding(true)}>Add {isWatch ? "symbol" : "holding"}</button>
@@ -147,7 +192,7 @@ export default function PortfolioPage() {
           </div>
         )}
         {positions.length === 0 ? (
-          !adding && !importing && <div className="empty"><p>No holdings yet. Add a symbol to start tracking it live.</p></div>
+          !adding && !importing && <div className="empty"><p>{link ? `No positions tickerdeck can track in this ${link.institution} account.` : "No holdings yet. Add a symbol to start tracking it live."}</p></div>
         ) : (
           <HoldingsTable portfolio={portfolio} positions={positions} />
         )}

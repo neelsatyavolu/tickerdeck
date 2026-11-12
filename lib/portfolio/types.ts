@@ -11,6 +11,14 @@ export type Holding = {
   note: string | null;
 };
 
+/** The brokerage a portfolio is synced from. A linked portfolio can't be edited by hand. */
+export type PortfolioLink = {
+  item_id: string;
+  institution: string;
+  status: "ok" | "login_required";
+  last_synced_at: string | null;
+};
+
 export type Portfolio = {
   id: string;
   name: string;
@@ -19,6 +27,7 @@ export type Portfolio = {
   start_date: string | null;
   created_at: string;
   holdings: Holding[];
+  link?: PortfolioLink | null;
 };
 
 export type Quote = { price: number; prevClose: number };
