@@ -29,7 +29,9 @@ export async function GET(req: NextRequest) {
     target.searchParams.set("xanom", code);
   }
   const res = NextResponse.redirect(target);
-  for (const cookie of cookies) res.headers.append("Set-Cookie", cookie);
+  // res.cookies rewrites every Set-Cookie header when used, so it goes first and the
+  // session cookies (already serialized by the Neon Auth SDK) are appended after it.
   res.cookies.set(FLOW_COOKIE, "", { httpOnly: true, secure: true, sameSite: "lax", path: "/api/xanom", maxAge: 0 });
+  for (const cookie of cookies) res.headers.append("Set-Cookie", cookie);
   return res;
 }

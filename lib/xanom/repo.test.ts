@@ -5,7 +5,7 @@ const db = vi.hoisted(() => ({ sql: null as unknown as TestSql }));
 vi.mock("../db", () => ({ sql: () => db.sql }));
 
 import { captureLink, createHandoff, handoffIdIn, takeToken } from "./handoff";
-import { attach, emailVerified, finishGuard, guardPending, linkOf, startGuard, userByEmail, userBySub } from "./repo";
+import { attach, emailVerified, finishGuard, guardPending, linkOf, relink, startGuard, userByEmail, userBySub } from "./repo";
 import { buildSummary, countsFor, summaryFor } from "./summary";
 
 // Neon Auth's tables, as far as these queries read them (the real ones live in neon_auth).
@@ -62,6 +62,17 @@ describe("xanom links", () => {
     expect((await linkOf(ADA))?.email).toBe("ada@new.example");
     await expect(attach(BOB, "xa_ADA", "bob@example.com")).rejects.toThrow(/already linked/);
     await expect(attach(ADA, "xa_OTHER", "ada@example.com")).rejects.toThrow(/already linked/);
+  });
+
+  it("relinks a user to a new Xanom account, but not to one linked elsewhere", async () => {
+    await addUser(ADA, "ada@example.com");
+    await addUser(BOB, "bob@example.com");
+    await attach(ADA, "xa_OLD", "ada@example.com");
+    await attach(BOB, "xa_BOB", "bob@example.com");
+    await relink(ADA, "xa_NEW", "ada@example.com");
+    expect(await linkOf(ADA)).toEqual({ sub: "xa_NEW", email: "ada@example.com" });
+    expect(await userBySub("xa_OLD")).toBeNull();
+    await expect(relink(ADA, "xa_BOB", "ada@example.com")).rejects.toThrow(/already linked/);
   });
 
   it("drops a link whose TickerQuill account was deleted", async () => {

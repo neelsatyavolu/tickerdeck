@@ -31,10 +31,6 @@ export async function linkOf(userId: string): Promise<{ sub: string; email: stri
   return rows[0] ? { sub: String(rows[0].xanom_sub), email: String(rows[0].email) } : null;
 }
 
-export async function subOfUser(userId: string): Promise<string | null> {
-  return (await linkOf(userId))?.sub ?? null;
-}
-
 export async function userByEmail(email: string): Promise<AppUser | null> {
   const rows = (await sql().query(
     `select u.id::text as id, u.email, u."emailVerified" as verified,
@@ -85,4 +81,13 @@ export async function finishGuard(userId: string): Promise<void> {
   await sql().query("delete from xanom_pending_guards where user_id = $1", [userId]);
 }
 
-export const lookups: LinkLookups = { userBySub, subOfUser, userByEmail, guardPending };
+/** Points a user's link at a new Xanom account (see `replace` in lib/xanom/linking.ts). */
+export async function relink(userId: string, sub: string, email: string): Promise<void> {
+  try {
+    await sql().query("update xanom_links set xanom_sub = $2, email = $3, linked_at = now() where user_id = $1", [userId, sub, email]);
+  } catch {
+    throw new UserFacingError("That Xanom account is already linked to another TickerQuill account.", 409);
+  }
+}
+
+export const lookups: LinkLookups = { userBySub, linkOf, userByEmail, guardPending };

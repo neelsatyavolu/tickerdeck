@@ -4,17 +4,17 @@ import type { XanomUser } from "./oidc";
 
 const XANOM: XanomUser = { sub: "xa_ADA", email: "ada@example.com", name: "Ada Lovelace" };
 
-type World = { links?: Record<string, string>; users?: AppUser[]; pendingGuards?: string[] };
+type World = { links?: Record<string, string>; linkEmails?: Record<string, string>; users?: AppUser[]; pendingGuards?: string[] };
 
 /** Lookups over a small in-memory world: links are userId -> sub. */
-function lookups({ links = {}, users = [], pendingGuards = [] }: World): LinkLookups {
+function lookups({ links = {}, linkEmails = {}, users = [], pendingGuards = [] }: World): LinkLookups {
   return {
     userBySub: async (sub) => {
       const id = Object.entries(links).find(([, s]) => s === sub)?.[0];
       const user = users.find((u) => u.id === id);
       return id ? { id, email: user?.email ?? "?" } : null;
     },
-    subOfUser: async (id) => links[id] ?? null,
+    linkOf: async (id) => (links[id] ? { sub: links[id], email: linkEmails[id] ?? "ada@example.com" } : null),
     userByEmail: async (email) => users.find((u) => u.email === email.toLowerCase()) ?? null,
     guardPending: async (id) => pendingGuards.includes(id),
   };
@@ -83,12 +83,12 @@ describe("rule 2: link or convert while signed in", () => {
 describe("rule 3: an account with the same email", () => {
   it("attaches and signs in, without the guard when the email was verified", async () => {
     const db = lookups({ users: [user("u1", "ada@example.com", { emailVerified: true, hasPassword: true })] });
-    expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "attach-and-sign-in", userId: "u1", email: "ada@example.com", guard: false });
+    expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "attach-and-sign-in", userId: "u1", email: "ada@example.com", guard: false, replace: false });
   });
 
   it("guard: an unverified email with a password gets its password and sessions revoked", async () => {
     const db = lookups({ users: [user("u1", "ada@example.com", { emailVerified: false, hasPassword: true })] });
-    expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "attach-and-sign-in", userId: "u1", email: "ada@example.com", guard: true });
+    expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "attach-and-sign-in", userId: "u1", email: "ada@example.com", guard: true, replace: false });
   });
 
   it("guard: one that failed halfway runs again even though the email now looks verified", async () => {
@@ -101,9 +101,14 @@ describe("rule 3: an account with the same email", () => {
     expect(await decide(XANOM, "signin", null, db)).toMatchObject({ guard: false });
   });
 
-  it("refuses when that account is linked to a different Xanom account", async () => {
-    const db = lookups({ links: { u1: "xa_OTHER" }, users: [user("u1", "ada@example.com")] });
+  it("refuses when that account is linked to a Xanom account under another email", async () => {
+    const db = lookups({ links: { u1: "xa_OTHER" }, linkEmails: { u1: "work@example.com" }, users: [user("u1", "ada@example.com")] });
     expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "refuse", code: "email_linked_elsewhere" });
+  });
+
+  it("replaces a link to an old Xanom account that held the same email", async () => {
+    const db = lookups({ links: { u1: "xa_DELETED" }, linkEmails: { u1: "Ada@example.com" }, users: [user("u1", "ada@example.com")] });
+    expect(await decide(XANOM, "signin", null, db)).toMatchObject({ kind: "attach-and-sign-in", userId: "u1", replace: true });
   });
 });
 

@@ -4,7 +4,7 @@ import { xanomConfig } from "./config";
 import { decide, type Decision } from "./linking";
 import { revokeOtherSessions, scramblePassword, signInAs, type SessionCookies } from "./neonAuth";
 import { finishSignIn, issuerKeys, readFlow, XanomError, type Intent, type XanomUser } from "./oidc";
-import { attach, finishGuard, lookups, startGuard, userByEmail } from "./repo";
+import { attach, finishGuard, lookups, relink, startGuard, userByEmail } from "./repo";
 
 export type CallbackResult = { intent: Intent; returnTo: string; cookies: SessionCookies };
 
@@ -30,7 +30,8 @@ async function apply(decision: Decision, xanom: XanomUser, origin: string): Prom
         await revokeOtherSessions(origin, cookies);
         await finishGuard(decision.userId);
       }
-      await attach(decision.userId, xanom.sub, xanom.email);
+      if (decision.replace) await relink(decision.userId, xanom.sub, xanom.email);
+      else await attach(decision.userId, xanom.sub, xanom.email);
       return cookies;
     }
     case "create": {
