@@ -5,7 +5,7 @@ const db = vi.hoisted(() => ({ sql: null as unknown as TestSql }));
 vi.mock("../db", () => ({ sql: () => db.sql }));
 
 import { captureLink, createHandoff, handoffIdIn, takeToken } from "./handoff";
-import { attach, emailVerified, linkOf, userByEmail, userBySub } from "./repo";
+import { attach, emailVerified, finishGuard, guardPending, linkOf, startGuard, userByEmail, userBySub } from "./repo";
 import { buildSummary, countsFor, summaryFor } from "./summary";
 
 // Neon Auth's tables, as far as these queries read them (the real ones live in neon_auth).
@@ -29,7 +29,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const t of ["xanom_links", "xanom_handoffs", "portfolios", "watchlists", "dashboards", "plaid_items", "neon_auth.account", 'neon_auth."user"']) {
+  for (const t of ["xanom_links", "xanom_handoffs", "xanom_pending_guards", "portfolios", "watchlists", "dashboards", "plaid_items", "neon_auth.account", 'neon_auth."user"']) {
     await db.sql.query(`delete from ${t}`);
   }
 });
@@ -68,6 +68,17 @@ describe("xanom links", () => {
     await attach(ADA, "xa_GONE", "gone@example.com");
     expect(await userBySub("xa_GONE")).toBeNull();
     expect(await linkOf(ADA)).toBeNull();
+  });
+});
+
+describe("pending guards", () => {
+  it("remembers a guard until it finishes", async () => {
+    expect(await guardPending(ADA)).toBe(false);
+    await startGuard(ADA);
+    await startGuard(ADA);
+    expect(await guardPending(ADA)).toBe(true);
+    await finishGuard(ADA);
+    expect(await guardPending(ADA)).toBe(false);
   });
 });
 

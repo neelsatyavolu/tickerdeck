@@ -72,4 +72,17 @@ export async function attach(userId: string, sub: string, email: string): Promis
   throw new UserFacingError("That Xanom account is already linked to another TickerQuill account.", 409);
 }
 
-export const lookups: LinkLookups = { userBySub, subOfUser, userByEmail };
+export async function guardPending(userId: string): Promise<boolean> {
+  const rows = (await sql().query("select 1 from xanom_pending_guards where user_id = $1", [userId])) as Row[];
+  return rows.length > 0;
+}
+
+export async function startGuard(userId: string): Promise<void> {
+  await sql().query("insert into xanom_pending_guards (user_id) values ($1) on conflict do nothing", [userId]);
+}
+
+export async function finishGuard(userId: string): Promise<void> {
+  await sql().query("delete from xanom_pending_guards where user_id = $1", [userId]);
+}
+
+export const lookups: LinkLookups = { userBySub, subOfUser, userByEmail, guardPending };

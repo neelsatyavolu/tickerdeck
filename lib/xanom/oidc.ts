@@ -45,7 +45,16 @@ export function isIntent(value: string | null): value is Intent {
 
 /** Only same-site paths, so `return` can't send people off-site. */
 export function safeReturn(path: string | null | undefined): string {
-  return path && path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") ? path : "/";
+  if (!path || !path.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(path)) return "/";
+  // Parse it the way the redirect will, so nothing the URL parser strips can turn it into //host.
+  const base = "https://return.invalid";
+  try {
+    const url = new URL(path, base);
+    if (url.origin !== base || url.pathname.startsWith("//")) return "/";
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/";
+  }
 }
 
 const jwksCache = new Map<string, JWTVerifyGetKey>();

@@ -92,7 +92,9 @@ describe("startSignIn", () => {
 
   it("only keeps same-site return paths", () => {
     expect(safeReturn("/settings")).toBe("/settings");
-    for (const bad of ["https://evil.example/", "//evil.example", "/\\evil.example", "settings", null]) expect(safeReturn(bad)).toBe("/");
+    expect(safeReturn("/p/1?tab=news#top")).toBe("/p/1?tab=news#top");
+    const bad = ["https://evil.example/", "//evil.example", "/\\evil.example", "/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "settings", "", null];
+    for (const path of bad) expect(safeReturn(path)).toBe("/");
   });
 });
 

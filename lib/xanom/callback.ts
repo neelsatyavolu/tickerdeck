@@ -4,7 +4,7 @@ import { xanomConfig } from "./config";
 import { decide, type Decision } from "./linking";
 import { revokeOtherSessions, scramblePassword, signInAs, type SessionCookies } from "./neonAuth";
 import { finishSignIn, issuerKeys, readFlow, XanomError, type Intent, type XanomUser } from "./oidc";
-import { attach, lookups, userByEmail } from "./repo";
+import { attach, finishGuard, lookups, startGuard, userByEmail } from "./repo";
 
 export type CallbackResult = { intent: Intent; returnTo: string; cookies: SessionCookies };
 
@@ -19,11 +19,18 @@ async function apply(decision: Decision, xanom: XanomUser, origin: string): Prom
       await attach(decision.userId, xanom.sub, xanom.email);
       return [];
     case "attach-and-sign-in": {
-      // Guard first, so nobody who knows the old password keeps a way in.
-      if (decision.guard) await scramblePassword(origin, decision.email);
-      await attach(decision.userId, xanom.sub, xanom.email);
+      // The guard runs to the end before the link exists, so nobody who knew the old
+      // password keeps a way in; a failure halfway leaves it pending for the next try.
+      if (decision.guard) {
+        await startGuard(decision.userId);
+        await scramblePassword(origin, decision.email);
+      }
       const cookies = await signInAs(origin, decision.email, xanom.name);
-      if (decision.guard) await revokeOtherSessions(origin, cookies);
+      if (decision.guard) {
+        await revokeOtherSessions(origin, cookies);
+        await finishGuard(decision.userId);
+      }
+      await attach(decision.userId, xanom.sub, xanom.email);
       return cookies;
     }
     case "create": {

@@ -4,10 +4,10 @@ import type { XanomUser } from "./oidc";
 
 const XANOM: XanomUser = { sub: "xa_ADA", email: "ada@example.com", name: "Ada Lovelace" };
 
-type World = { links?: Record<string, string>; users?: AppUser[] };
+type World = { links?: Record<string, string>; users?: AppUser[]; pendingGuards?: string[] };
 
 /** Lookups over a small in-memory world: links are userId -> sub. */
-function lookups({ links = {}, users = [] }: World): LinkLookups {
+function lookups({ links = {}, users = [], pendingGuards = [] }: World): LinkLookups {
   return {
     userBySub: async (sub) => {
       const id = Object.entries(links).find(([, s]) => s === sub)?.[0];
@@ -16,6 +16,7 @@ function lookups({ links = {}, users = [] }: World): LinkLookups {
     },
     subOfUser: async (id) => links[id] ?? null,
     userByEmail: async (email) => users.find((u) => u.email === email.toLowerCase()) ?? null,
+    guardPending: async (id) => pendingGuards.includes(id),
   };
 }
 
@@ -88,6 +89,11 @@ describe("rule 3: an account with the same email", () => {
   it("guard: an unverified email with a password gets its password and sessions revoked", async () => {
     const db = lookups({ users: [user("u1", "ada@example.com", { emailVerified: false, hasPassword: true })] });
     expect(await decide(XANOM, "signin", null, db)).toEqual({ kind: "attach-and-sign-in", userId: "u1", email: "ada@example.com", guard: true });
+  });
+
+  it("guard: one that failed halfway runs again even though the email now looks verified", async () => {
+    const db = lookups({ users: [user("u1", "ada@example.com", { emailVerified: true, hasPassword: true })], pendingGuards: ["u1"] });
+    expect(await decide(XANOM, "signin", null, db)).toMatchObject({ kind: "attach-and-sign-in", guard: true });
   });
 
   it("no guard for an unverified account without a password", async () => {

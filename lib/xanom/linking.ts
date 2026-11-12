@@ -12,6 +12,8 @@ export type LinkLookups = {
   /** The xanom_sub already on a user. */
   subOfUser: (userId: string) => Promise<string | null>;
   userByEmail: (email: string) => Promise<AppUser | null>;
+  /** A guard that started on this user and didn't finish. */
+  guardPending: (userId: string) => Promise<boolean>;
 };
 
 export type Decision =
@@ -61,7 +63,8 @@ export async function decide(
     if (existing && existing !== xanom.sub) return { kind: "refuse", code: "email_linked_elsewhere" };
     // Pre-hijacking guard: someone may have registered this address with a password
     // they know but never proved they own the inbox.
-    const guard = !byEmail.emailVerified && byEmail.hasPassword;
+    // Signing in confirms the email, so a guard that failed halfway is remembered separately.
+    const guard = (!byEmail.emailVerified && byEmail.hasPassword) || (await db.guardPending(byEmail.id));
     return { kind: "attach-and-sign-in", userId: byEmail.id, email: byEmail.email, guard };
   }
 

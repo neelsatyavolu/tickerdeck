@@ -19,3 +19,11 @@ create table if not exists xanom_handoffs (
 );
 
 create index if not exists xanom_handoffs_expiry_idx on xanom_handoffs (expires_at);
+
+-- Accounts whose pre-hijacking guard (password replaced, other sessions ended)
+-- has started but not finished. Signing in finishes it before linking, so a
+-- failure halfway can't leave a squatter's session behind.
+create table if not exists xanom_pending_guards (
+  user_id text primary key,
+  created_at timestamptz not null default now()
+);
